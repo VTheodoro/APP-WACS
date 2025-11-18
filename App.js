@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { BluetoothProvider } from './src/contexts/BluetoothContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +29,7 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <AuthProvider>
+            <BluetoothProvider>
               <AppWithAuth
                 appIsReady={appIsReady}
                 setAppIsReady={setAppIsReady}
@@ -38,6 +40,7 @@ export default function App() {
                 welcomeUser={welcomeUser}
                 setWelcomeUser={setWelcomeUser}
               />
+            </BluetoothProvider>
           </AuthProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

@@ -4,6 +4,12 @@ import Constants from 'expo-constants';
 
 const BluetoothContext = createContext(null);
 
+export const SPEED_MODES = {
+  eco: { label: 'Indoor', icon: '🏠', desc: 'Locais fechados' },
+  sport: { label: 'Outdoor', icon: '🌤️', desc: 'Locais abertos' },
+  manual: { label: 'Manual', icon: '🎚️', desc: 'Ajuste manual' },
+};
+
 // Em ambientes onde o módulo nativo não está disponível (Expo Go/web),
 // a importação direta pode falhar. Fazemos require dinâmico e fallback.
 const forceMock = Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === true ||
@@ -53,6 +59,8 @@ export const BluetoothProvider = ({ children }) => {
   const [bluetoothState, setBluetoothState] = useState('Unknown');
   const [locationPermission, setLocationPermission] = useState('unknown');
   const [lastCommand, setLastCommand] = useState('');
+  const [speedMode, setSpeedMode] = useState('eco'); // 'eco', 'sport', 'manual'
+  const [isLocked, setIsLocked] = useState(false);
 
   // Monitorar estado do Bluetooth
   useEffect(() => {
@@ -141,6 +149,25 @@ export const BluetoothProvider = ({ children }) => {
   };
 
   const scanForDevices = async () => {
+    if (forceMock) {
+      setIsScanning(true);
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const mockDevices = [
+            {
+              id: 'wacs-kit-001',
+              name: 'Kit de Automação - WACS (Simulado)',
+              rssi: -60,
+              paired: true,
+            },
+          ];
+          setBleDevices(mockDevices);
+          setIsScanning(false);
+          resolve(mockDevices);
+        }, 1500);
+      });
+    }
+
     await requestPermissions();
     if (bluetoothState !== 'PoweredOn') {
       Alert.alert(
@@ -280,6 +307,11 @@ export const BluetoothProvider = ({ children }) => {
         openAppSettings,
         sendCommand,
         lastCommand,
+        speedMode,
+        setSpeedMode,
+        isLocked,
+        setIsLocked,
+        SPEED_MODES,
       }}
     >
       {children}

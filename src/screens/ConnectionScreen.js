@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBluetooth } from '../contexts/BluetoothContext';
 import {
   View,
   Text,
@@ -19,12 +20,20 @@ import { connectToArduino } from '../services/arduinoService';
 import * as Haptics from 'expo-haptics';
 
 export const ConnectionScreen = () => {
+  const {
+    connectToDevice,
+    disconnectFromDevice,
+    isConnected,
+    isConnecting: isConnectingGlobally,
+    deviceInfo: connectedDevice,
+    scanForDevices,
+    devices: bleDevices,
+    isScanning,
+  } = useBluetooth();
   const navigation = useNavigation();
-  const [isSearching, setIsSearching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [devices, setDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'disconnected', 'connecting', 'connected'
 
   const handleVibrate = (type = 'light') => {
     if (Platform.OS === 'ios') {
@@ -34,36 +43,15 @@ export const ConnectionScreen = () => {
     }
   };
 
-  const handleScan = () => {
-    if (isSearching) return;
-    
+  const handleScan = async () => {
+    if (isScanning) return;
     handleVibrate('light');
-    setIsSearching(true);
-    setDevices([]);
-    setSelectedDevice(null);
-    setConnectionStatus('disconnected');
-    
-    // Simula busca por 1.5 segundos
-    setTimeout(() => {
-      // Mostra apenas o dispositivo na porta COM4
-      setDevices([
-        {
-          id: 'wacs-kit-001',
-          name: 'Kit de Automação - WACS',
-          port: 'COM4',
-          rssi: -60,
-          isConnectable: true,
-          type: 'wacs-kit',
-          lastConnected: new Date()
-        }
-      ]);
-      
-      setIsSearching(false);
-    }, 1500);
+    const foundDevices = await scanForDevices();
+    setDevices(foundDevices);
   };
 
   const onRefresh = () => {
-    if (!isSearching) {
+    if (!isScanning) {
       handleScan();
     }
   };
@@ -85,48 +73,15 @@ export const ConnectionScreen = () => {
   };
 
   const handleConnect = async (device) => {
-    try {
-      // Mostra feedback visual de carregamento
-      Alert.alert('Conectando', `Conectando ao ${device.name}...`, [], { cancelable: false });
-      
-      // Tenta conectar ao Arduino via servidor serial
-      const result = await connectToArduino(device.port || 'COM3');
-      
-      // Fecha o alerta de carregamento
-      Alert.alert('Sucesso', `Conectado com sucesso ao ${device.name}!`);
-      
-      if (result && result.success) {
-        // Navega para a tela de controle após um pequeno atraso
-        setTimeout(() => {
-          navigation.navigate('ControlScreen', { 
-            deviceInfo: { 
-              ...device, 
-              isConnected: true 
-            } 
-          });
-        }, 500);
-      } else {
-        const errorMessage = result?.error || 'Não foi possível conectar ao dispositivo';
-        Alert.alert('Erro', errorMessage);
-      }
-    } catch (error) {
-      console.error('Erro na conexão:', error);
-      Alert.alert(
-        'Erro de Conexão', 
-        'Não foi possível conectar ao servidor do Arduino. Verifique se o servidor está rodando e tente novamente.',
-        [
-          { text: 'Tentar Novamente', onPress: () => handleConnect(device) },
-          { text: 'Cancelar', style: 'cancel' }
-        ]
-      );
-    }
+    await connectToDevice(device);
+    navigation.goBack();
   };
 
   const renderDevice = (device) => {
     const signal = getSignalStrength(device.rssi);
     const isSelected = selectedDevice?.id === device.id;
-    const isConnecting = isSelected && connectionStatus === 'connecting';
-    const isConnected = isSelected && connectionStatus === 'connected';
+    const isConnecting = isConnectingGlobally && connectedDevice?.id === device.id;
+    const isConnected = isConnected && connectedDevice?.id === device.id;
     
     return (
       <Pressable 
@@ -233,10 +188,7 @@ export const ConnectionScreen = () => {
   
   const handleDisconnect = (device) => {
     handleVibrate('light');
-    setConnectionStatus('disconnected');
-    setSelectedDevice(null);
-    // Aqui você pode adicionar a lógica para desconectar o dispositivo
-    Alert.alert('Desconectado', `Dispositivo ${device.name} desconectado com sucesso.`);
+    disconnectFromDevice();
   };
   
   const showDeviceInfo = (device) => {
@@ -246,85 +198,94 @@ export const ConnectionScreen = () => {
       `Nome: ${device.name}\n` +
       `Porta: ${device.port}\n` +
       `Tipo: ${device.type || 'WACS Kit'}\n` +
-      `Status: ${connectionStatus === 'connected' ? 'Conectado' : 'Desconectado'}\n\n` +
+      `Status: ${isConnected && connectedDevice?.id === device.id ? 'Conectado' : 'Desconectado'}\n\n` +
       'Este é um dispositivo de automação WACS para controle de acessibilidade.'
     );
   };
 
   const renderContent = () => {
     return (
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={['#1E88E5']}
-            tintColor="#1E88E5"
-          />
-        }
-      >
-        {isSearching && devices.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1E88E5" />
-            <Text style={styles.loadingText}>Procurando dispositivos...</Text>
-            <Text style={styles.loadingSubtext}>Isso pode levar alguns segundos</Text>
-          </View>
-        ) : devices.length > 0 ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dispositivos Encontrados</Text>
-              <Text style={styles.deviceCount}>{devices.length} dispositivo{devices.length !== 1 ? 's' : ''}</Text>
+      <View style={{ flex: 1 }}>
+        {/* Aviso de Simulação */}
+        <View style={styles.disclaimerContainer}>
+          <Ionicons name="information-circle-outline" size={20} color="#00529B" />
+          <Text style={styles.disclaimerText}>
+            Esta é uma simulação. A busca e conexão de dispositivos são apenas para demonstração.
+          </Text>
+        </View>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={['#1E88E5']}
+              tintColor="#1E88E5"
+            />
+          }
+        >
+          {isScanning && devices.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#1E88E5" />
+              <Text style={styles.loadingText}>Procurando dispositivos...</Text>
+              <Text style={styles.loadingSubtext}>Isso pode levar alguns segundos</Text>
             </View>
-            <View style={styles.devicesList}>
-              {devices.map(renderDevice)}
-            </View>
-          </>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="bluetooth" size={64} color="#E5E7EB" />
-              <View style={styles.emptyIconOverlay}>
-                <Ionicons name="search" size={24} color="#9CA3AF" />
+          ) : devices.length > 0 ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Dispositivos Encontrados</Text>
+                <Text style={styles.deviceCount}>{devices.length} dispositivo{devices.length !== 1 ? 's' : ''}</Text>
               </View>
-            </View>
-            <Text style={styles.emptyText}>Nenhum dispositivo encontrado</Text>
-            <Text style={styles.emptySubtext}>
-              Certifique-se de que sua cadeira está ligada, próxima e no modo de pareamento
-            </Text>
-            
-            <Pressable
-              style={({ pressed }) => [
-                styles.scanAgainButton,
-                pressed && styles.scanAgainButtonPressed
-              ]}
-              onPress={handleScan}
-              disabled={isSearching}
-            >
-              <Ionicons 
-                name="refresh" 
-                size={20} 
-                color="#1E88E5" 
-                style={styles.scanAgainIcon} 
-              />
-              <Text style={styles.scanAgainText}>
-                {isSearching ? 'Buscando...' : 'Buscar Novamente'}
+              <View style={styles.devicesList}>
+                {devices.map(renderDevice)}
+              </View>
+            </>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="bluetooth" size={64} color="#E5E7EB" />
+                <View style={styles.emptyIconOverlay}>
+                  <Ionicons name="search" size={24} color="#9CA3AF" />
+                </View>
+              </View>
+              <Text style={styles.emptyText}>Nenhum dispositivo encontrado</Text>
+              <Text style={styles.emptySubtext}>
+                Certifique-se de que sua cadeira está ligada, próxima e no modo de pareamento
               </Text>
-            </Pressable>
-          </View>
-        )}
-        
-        {devices.length > 0 && (
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>
-              {isSearching 
-                ? 'Buscando por mais dispositivos...' 
-                : 'Arraste para baixo para atualizar a lista'}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+              
+              <Pressable
+                style={({ pressed }) => [
+                  styles.scanAgainButton,
+                  pressed && styles.scanAgainButtonPressed
+                ]}
+                onPress={handleScan}
+                disabled={isScanning}
+              >
+                <Ionicons 
+                  name="refresh" 
+                  size={20} 
+                  color="#1E88E5" 
+                  style={styles.scanAgainIcon} 
+                />
+                <Text style={styles.scanAgainText}>
+                  {isScanning ? 'Buscando...' : 'Buscar Novamente'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          
+          {devices.length > 0 && (
+            <View style={styles.footerContainer}>
+              <Text style={styles.footerText}>
+                {isScanning 
+                  ? 'Buscando por mais dispositivos...' 
+                  : 'Arraste para baixo para atualizar a lista'}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
     );
   };
 
@@ -370,10 +331,10 @@ export const ConnectionScreen = () => {
               pressed && styles.fabPressed
             ]}
             onPress={handleScan}
-            disabled={isSearching}
+            disabled={isScanning}
           >
             <Ionicons 
-              name={isSearching ? 'refresh' : 'refresh-outline'} 
+              name={isScanning ? 'refresh' : 'refresh-outline'} 
               size={24} 
               color="#ffffff" 
             />
@@ -385,6 +346,24 @@ export const ConnectionScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef7ff',
+    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#b3d9ff',
+  },
+  disclaimerText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 13,
+    color: '#00529B',
+    lineHeight: 18,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',

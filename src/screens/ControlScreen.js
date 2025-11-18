@@ -31,6 +31,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { sendToArduino } from '../services/arduinoHttp';
+import { useBluetooth } from '../contexts/BluetoothContext';
 
 const JOYSTICK_SIZE = 280;
 const STICK_SIZE = 100;
@@ -38,8 +39,7 @@ const MAX_DISTANCE = (JOYSTICK_SIZE - STICK_SIZE) / 2;
 
 export const ControlScreen = () => {
   // Estados principais - Usados para a UI do React, sincronizados com shared values quando necessário
-  const [speedMode, setSpeedMode] = useState('manual');
-  const [isLocked, setIsLocked] = useState(false);
+  const { speedMode, setSpeedMode, isLocked, setIsLocked, SPEED_MODES } = useBluetooth();
   const [isEmergency, setIsEmergency] = useState(false);
   const currentSpeed = useSharedValue(0);
   const [isPressingLock, setIsPressingLock] = useState(false);
@@ -71,7 +71,7 @@ export const ControlScreen = () => {
   // Estados simulados/locais para indicadores (serial-only)
   const isConnected = true;
   const isConnecting = false;
-  const deviceInfo = { name: 'Serial COM5' };
+  const deviceInfo = { name: 'Kit WACS (Simulado)' };
   const [batteryLevel] = useState(84);
   const [connectionStrength] = useState('strong');
   const [estimatedAutonomy] = useState('—');
@@ -475,18 +475,14 @@ export const ControlScreen = () => {
             <View style={styles.speedModesContainer}>
               <Text style={styles.sectionTitle}>Modos de Velocidade</Text>
               <View style={styles.speedModesGrid}>
-                {[
-                  { key: 'eco', label: 'Indoor', icon: '🏠', desc: 'Locais fechados • resposta precisa' },
-                  { key: 'sport', label: 'Outdoor', icon: '🌤️', desc: 'Locais abertos • resposta livre' },
-                  { key: 'manual', label: 'Manual', icon: '🎚️', desc: 'Ajuste de velocidade manual' }
-                ].map(mode => (
+                {Object.entries(SPEED_MODES).map(([key, mode]) => (
                   <Pressable
-                    key={mode.key}
-                    onPress={() => handleSpeedModeChange(mode.key)}
+                    key={key}
+                    onPress={() => handleSpeedModeChange(key)}
                     disabled={isLocked || isEmergency}
                     style={[
                       styles.speedModeButton,
-                      speedMode === mode.key && styles.speedModeButtonSelected,
+                      speedMode === key && styles.speedModeButtonSelected,
                       (isLocked || isEmergency) && styles.speedModeButtonDisabled
                     ]}
                   >
@@ -495,7 +491,7 @@ export const ControlScreen = () => {
                       <View style={styles.speedModeTextContainer}>
                         <Text style={[
                           styles.speedModeLabel,
-                          speedMode === mode.key && styles.speedModeLabelSelected
+                          speedMode === key && styles.speedModeLabelSelected
                         ]} numberOfLines={1} ellipsizeMode="tail">
                           {mode.label}
                         </Text>
@@ -505,7 +501,7 @@ export const ControlScreen = () => {
                       </View>
                     </View>
                     <View style={styles.speedModeCheckContainer}>
-                      <Ionicons name="checkmark-circle" size={20} color={speedMode === mode.key ? '#10b981' : 'transparent'} />
+                      <Ionicons name="checkmark-circle" size={20} color={speedMode === key ? '#10b981' : 'transparent'} />
                     </View>
                   </Pressable>
                 ))}
@@ -625,7 +621,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#1976d2',
     borderBottomRightRadius: 25,
-    borderBottomLeftRadius: 5,
+    borderBottomLeftRadius: 25,
     zIndex: 1,
     elevation: 4, // Sombra no Android
     shadowColor: '#000', // Sombra no iOS

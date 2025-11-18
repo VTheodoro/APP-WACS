@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useBluetooth } from '../contexts/BluetoothContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getUserGamificationData, getLevelNameAndReward } from '../services/gamification';
 import { getSeenPosts, saveSeenPosts } from '../utils/storage';
@@ -23,23 +24,29 @@ import { fetchPostsPaginated } from '../services/firebase/posts';
 const { width } = Dimensions.get('window');
 
 export const MainSelectionScreen = () => {
+  const scrollViewRef = useRef(null);
   const navigation = useNavigation();
   const { user, logout } = useAuth();
-  const isConnected = false;
-  const isConnecting = false;
-  const deviceInfo = null;
-  const batteryLevel = 0;
-  const connectionStrength = 'none';
-  const connectToDevice = () => {};
-  const disconnectFromDevice = () => {};
+  const {
+    isConnected,
+    isConnecting,
+    deviceInfo,
+    batteryLevel,
+    connectionStrength,
+    disconnectFromDevice,
+    speedMode,
+    isLocked,
+    SPEED_MODES,
+  } = useBluetooth();
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-50));
   const [gamification, setGamification] = useState({ xp: 0, level: 1, badges: [] });
   const [hasNewPosts, setHasNewPosts] = useState(false);
   const [connectBlinkAnim] = useState(new Animated.Value(1));
+  const levelInfo = useMemo(() => getLevelNameAndReward(gamification.level || 1), [gamification.level]);
 
-  const triggerConnectBlink = () => {
+  const triggerConnectBlink = useCallback(() => {
     // Pisca o botão de conectar algumas vezes
     Animated.loop(
       Animated.sequence([
@@ -48,7 +55,7 @@ export const MainSelectionScreen = () => {
       ]),
       { iterations: 3 }
     ).start();
-  };
+  }, [connectBlinkAnim]);
 
   useEffect(() => {
     // Animação de entrada
@@ -76,7 +83,7 @@ export const MainSelectionScreen = () => {
   );
 
   // Função para verificar se há novos posts não vistos
-  const checkNewPosts = async () => {
+  const checkNewPosts = useCallback(async () => {
     if (!user?.id) return;
     try {
       const { posts } = await fetchPostsPaginated({ pageSize: 10 });
@@ -86,7 +93,7 @@ export const MainSelectionScreen = () => {
     } catch (e) {
       setHasNewPosts(false);
     }
-  };
+  }, [user?.id]);
 
   // Atualiza badge ao focar ou trocar usuário
   useFocusEffect(
@@ -96,7 +103,7 @@ export const MainSelectionScreen = () => {
   );
 
   // Ao entrar na tela de comunidade, marca todos os posts atuais como vistos
-  const handleCommunityPress = async () => {
+  const handleCommunityPress = useCallback(async () => {
     navigation.navigate('SocialScreen');
     try {
       const { posts } = await fetchPostsPaginated({ pageSize: 10 });
@@ -104,16 +111,18 @@ export const MainSelectionScreen = () => {
       await saveSeenPosts(user.id, ids);
       setHasNewPosts(false);
     } catch {}
-  };
+  }, [navigation, user?.id]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // TODO: Implementar lógica de refresh real (ex: re-escanear ou pedir status do dispositivo conectado)
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simula refresh
+    await Promise.all([
+      user?.id ? getUserGamificationData(user.id).then(d => d && setGamification(d)).catch(() => {}) : Promise.resolve(),
+      checkNewPosts(),
+    ]);
     setRefreshing(false);
-  };
+  }, [user?.id, checkNewPosts]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     Alert.alert(
       'Confirmar Logout',
       'Tem certeza que deseja sair?',
@@ -134,9 +143,9 @@ export const MainSelectionScreen = () => {
         },
       ]
     );
-  };
+  }, [logout]);
 
-  const handleQuickConnect = async () => {
+  const handleQuickConnect = useCallback(async () => {
     if (isConnected) {
       // Se já conectado, pergunta se quer desconectar (usando a função do contexto)
       Alert.alert(
@@ -157,14 +166,14 @@ export const MainSelectionScreen = () => {
       // Se não conectado, navega para a tela de conexão
       navigation.navigate('ConnectionScreen');
     }
-  };
+  }, [isConnected, isConnecting, deviceInfo, disconnectFromDevice, navigation]);
 
-  const getTimeGreeting = () => {
+  const getTimeGreeting = useCallback(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
     if (hour < 18) return 'Boa tarde';
     return 'Boa noite';
-  };
+  }, []);
 
   const getConnectionIcon = () => {
     if (isConnecting) return 'bluetooth';
@@ -199,7 +208,7 @@ export const MainSelectionScreen = () => {
     return '#CD7F32'; // Bronze
   };
 
-  const quickActions = [
+  const quickActions = useMemo(() => [
     {
       id: 'control',
       title: 'Controle',
@@ -213,7 +222,7 @@ export const MainSelectionScreen = () => {
         
         navigation.navigate('ControlScreen', { deviceInfo: serializedDeviceInfo });
       },
-      disabled: false, // Botão sempre habilitado
+      disabled: !isConnected,
       gradient: ['#1976d2', '#2196f3'],
     },
     {
@@ -237,9 +246,9 @@ export const MainSelectionScreen = () => {
       onPress: () => navigation.navigate('LocationsListScreen'),
       gradient: ['#1976d2', '#2196f3'],
     },
-  ];
+  ], [navigation, handleCommunityPress, deviceInfo, isConnected]);
 
-  const newsItems = [
+  const newsItems = useMemo(() => [
     { 
       id: '1', 
       text: 'Nova atualização disponível - Melhorias de performance',
@@ -258,7 +267,7 @@ export const MainSelectionScreen = () => {
       type: 'feature',
       time: '1d'
     },
-  ];
+  ], []);
 
   const getNewsIcon = (type) => {
     switch (type) {
@@ -280,10 +289,13 @@ export const MainSelectionScreen = () => {
         if (!action.disabled) {
           action.onPress();
         } else if (action.id === 'control' && !isConnected) {
+          // Rola para a seção de conexão e pisca o botão
+          scrollViewRef.current?.scrollTo({ y: 400, animated: true });
           triggerConnectBlink();
         }
       }}
-      onLongPress={undefined}
+      accessibilityRole="button"
+      accessibilityLabel={action.title}
     >
       <LinearGradient
         colors={action.disabled ? ['#e0e0e0', '#bdbdbd'] : action.gradient}
@@ -311,7 +323,8 @@ export const MainSelectionScreen = () => {
   );
 
   return (
-    <ScrollView 
+    <ScrollView
+      ref={scrollViewRef}
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       refreshControl={
@@ -373,16 +386,17 @@ export const MainSelectionScreen = () => {
               <Text style={styles.timeGreeting}>{getTimeGreeting()},</Text>
               <Text style={styles.userName}>{user?.name || 'Usuário'}!</Text>
               <Text style={{ color: '#FFD700', fontWeight: 'bold', fontSize: 15, marginTop: 2 }}>
-                Nível {gamification.level} - {gamification.xp} XP
+                {levelInfo.name} - {gamification.xp} XP
               </Text>
             </View>
             {/* Ícone de notificação à direita */}
             <Pressable
-              onPress={() => {/* navegação futura para notificações */}}
+              onPress={handleLogout}
               style={{ marginLeft: 'auto', padding: 8 }}
-              accessibilityLabel="Notificações"
+              accessibilityLabel="Sair"
+              accessibilityRole="button"
             >
-              <Ionicons name="notifications-outline" size={28} color="#fff" />
+              <Ionicons name="log-out-outline" size={28} color="#fff" />
             </Pressable>
           </View>
         </Animated.View>
@@ -432,21 +446,23 @@ export const MainSelectionScreen = () => {
                   color={getBatteryColor()} 
                 />
                 <Text style={styles.infoLabel}>Bateria</Text>
-                <Text style={[styles.infoValue, { color: getBatteryColor(), fontSize: 13 }]}>
-                  {batteryLevel}%
+                <Text style={[styles.infoValue, { color: getBatteryColor() }]}>
+                  {Math.round(batteryLevel)}%
                 </Text>
               </View>
               
+              <View style={styles.infoDivider} />
               <View style={styles.infoItem}>
-                <Ionicons name="speedometer-outline" size={18} color="#FF9800" />
-                <Text style={styles.infoLabel}>Velocidade</Text>
-                <Text style={[styles.infoValue, { fontSize: 13 }]}>Média</Text>
+                <Ionicons name="rocket-outline" size={22} color="#FF9800" />
+                <Text style={styles.infoLabel}>Modo</Text>
+                <Text style={styles.infoValue}>{SPEED_MODES[speedMode]?.label || 'N/A'}</Text>
               </View>
               
+              <View style={styles.infoDivider} />
               <View style={styles.infoItem}>
-                <Ionicons name="time-outline" size={18} color="#2196F3" />
-                <Text style={styles.infoLabel}>Uso Hoje</Text>
-                <Text style={[styles.infoValue, { fontSize: 13 }]}>2h 15m</Text>
+                <Ionicons name={isLocked ? 'lock-closed-outline' : 'lock-open-outline'} size={22} color={isLocked ? '#ef4444' : '#22c55e'} />
+                <Text style={styles.infoLabel}>Trava</Text>
+                <Text style={[styles.infoValue, { color: isLocked ? '#ef4444' : '#22c55e' }]}>{isLocked ? 'Ativada' : 'Desativada'}</Text>
               </View>
             </View>
             <Pressable 
@@ -468,7 +484,7 @@ export const MainSelectionScreen = () => {
             {isConnecting ? (
               <Ionicons name="bluetooth" size={36} color="#FF9800" />
             ) : (
-              <Ionicons name="bluetooth-outline" size={36} color="#9E9E9E" />
+              <Ionicons name="bluetooth-outline" size={48} color="#adb5bd" />
             )}
             <Text style={styles.disconnectedText}>
               {isConnecting ? 'Conectando...' : 'Cadeira não conectada'}
@@ -631,9 +647,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   statusCardDisconnected: {
-    backgroundColor: '#fafafa',
-    borderWidth: 2,
-    borderColor: '#ffcdd2',
+    backgroundColor: '#f8f9fa',
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#ced4da',
   },
   statusHeader: {
     flexDirection: 'row',
@@ -681,26 +698,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: '#6c757d',
     marginTop: 8,
     marginBottom: 4,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#343a40',
+  },
+  infoDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: '#e9ecef',
   },
   connectButton: {
     marginTop: 20,
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#1976d2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   connectButtonGradient: {
     padding: 15,
@@ -717,19 +739,21 @@ const styles = StyleSheet.create({
   disconnectedInfo: {
     alignItems: 'center',
     paddingVertical: 20,
+    paddingHorizontal: 10,
   },
   disconnectedText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 12,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#495057',
+    marginTop: 16,
   },
   disconnectedSubtext: {
     fontSize: 14,
-    color: '#999',
-    marginTop: 4,
+    color: '#6c757d',
+    marginTop: 8,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 20,
   },
   quickActionsContainer: {
     paddingHorizontal: 20,
