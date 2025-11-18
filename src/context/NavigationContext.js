@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef } from 'react';
+import Constants from 'expo-constants';
 import { decodePolyline, calculateDistance } from '../utils/mapUtils';
 
 export const NavigationContext = createContext();
@@ -110,8 +111,11 @@ export function NavigationProvider({ children }) {
         if (dist < minDist) minDist = dist;
       }
       if (minDist > 30) {
-        // Usuário saiu do trajeto, recalcular rota
-        await requestRoute(location, routeData.destination, process.env.GOOGLE_MAPS_API_KEY);
+        await requestRoute(
+          location,
+          routeData.destination,
+          Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY || Constants.manifest2?.extra?.GOOGLE_MAPS_API_KEY
+        );
       }
     }
   }
@@ -138,4 +142,4 @@ export function NavigationProvider({ children }) {
 
 export function useNavigationContext() {
   return useContext(NavigationContext);
-} 
+}

@@ -16,7 +16,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useBluetooth } from '../contexts/BluetoothContext';
 import { getUserGamificationData, getLevelNameAndReward } from '../services/gamification';
 import { getSeenPosts, saveSeenPosts } from '../utils/storage';
 import { fetchPostsPaginated } from '../services/firebase/posts';
@@ -26,15 +25,13 @@ const { width } = Dimensions.get('window');
 export const MainSelectionScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
-  const {
-    isConnected,
-    isConnecting,
-    deviceInfo,
-    batteryLevel,
-    connectionStrength,
-    connectToDevice,
-    disconnectFromDevice,
-  } = useBluetooth();
+  const isConnected = false;
+  const isConnecting = false;
+  const deviceInfo = null;
+  const batteryLevel = 0;
+  const connectionStrength = 'none';
+  const connectToDevice = () => {};
+  const disconnectFromDevice = () => {};
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-50));

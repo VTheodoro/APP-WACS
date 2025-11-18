@@ -54,11 +54,7 @@ module.exports = {
           photosPermission: 'O WACS precisa de acesso à sua biblioteca de fotos para que você possa selecionar uma foto de perfil.'
         }
       ],
-      'react-native-ble-plx',
-      // Ensure expo-asset is registered as a plugin so native assets are available
-      'expo-asset',
     ],
-    newArchEnabled: true,
     extra: {
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
@@ -70,9 +66,7 @@ module.exports = {
       GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
       WEBSOCKET_URL: process.env.WEBSOCKET_URL,
       USE_BLUETOOTH_MOCK: process.env.USE_BLUETOOTH_MOCK,
-      eas: {
-        projectId: "a8a4ca48-63e4-4cc2-999e-ffc5f82ffc47"
-      }
+      
     }
   }
-}; 
+};

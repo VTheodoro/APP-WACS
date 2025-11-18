@@ -8,7 +8,6 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SearchHistoryProvider } from './src/contexts/SearchHistoryContext';
 import { ChatProvider } from './src/contexts/ChatContext';
-import { BluetoothProvider } from './src/contexts/BluetoothContext';
 import * as SplashScreen from 'expo-splash-screen';
 import CustomSplashScreen from './src/screens/SplashScreen'; // Import your custom splash screen
 import { NavigationProvider } from './src/context/NavigationContext';
@@ -29,7 +28,6 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <AuthProvider>
-            <BluetoothProvider>
               <AppWithAuth
                 appIsReady={appIsReady}
                 setAppIsReady={setAppIsReady}
@@ -40,7 +38,6 @@ export default function App() {
                 welcomeUser={welcomeUser}
                 setWelcomeUser={setWelcomeUser}
               />
-            </BluetoothProvider>
           </AuthProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
