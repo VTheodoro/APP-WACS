@@ -33,8 +33,8 @@ import { Platform } from 'react-native';
 import { sendToArduino } from '../services/arduinoHttp';
 import { useBluetooth } from '../contexts/BluetoothContext';
 
-const JOYSTICK_SIZE = 280;
-const STICK_SIZE = 100;
+const JOYSTICK_SIZE = 340;
+const STICK_SIZE = 120;
 const MAX_DISTANCE = (JOYSTICK_SIZE - STICK_SIZE) / 2;
 
 export const ControlScreen = () => {
@@ -75,13 +75,6 @@ export const ControlScreen = () => {
   const [batteryLevel] = useState(84);
   const [connectionStrength] = useState('strong');
   const [estimatedAutonomy] = useState('—');
-  const [systemTemperature, setSystemTemperature] = useState(36.8);
-
-  useEffect(() => {
-    // Pequena variação mock de temperatura para efeito visual
-    const t = setInterval(() => setSystemTemperature(prev => Math.round((prev + (Math.random()*0.4 - 0.2))*10)/10), 5000);
-    return () => clearInterval(t);
-  }, []);
 
   const navigation = useNavigation();
   const route = useRoute();
@@ -140,18 +133,11 @@ export const ControlScreen = () => {
   const speedGaugeFillStyle = useAnimatedStyle(() => {
     const circumference = 2 * Math.PI * 45;
     const strokeDashoffset = circumference - (speedPercentage.value / 100) * circumference;
-    
-    // Cor baseada no modo de velocidade
-    let fillColor = '#10b981'; // eco default
-    if (speedModeShared.value === 'comfort') {
-      fillColor = '#3b82f6';
-    } else if (speedModeShared.value === 'sport') {
-      fillColor = '#ef4444';
-    }
+    const themeColor = SPEED_MODES[speedModeShared.value]?.themeColors[0] || '#1976d2';
 
     return {
       strokeDashoffset,
-      borderColor: fillColor, // Usando borderColor para o círculo parcial
+      borderColor: themeColor,
     };
   });
 
@@ -226,14 +212,13 @@ export const ControlScreen = () => {
   });
 
   const stickAnimatedStyle = useAnimatedStyle(() => {
+    const themeColor = SPEED_MODES[speedModeShared.value]?.themeColors[0] || '#1976d2';
     return {
       transform: [
         { translateX: translateX.value },
         { translateY: translateY.value },
       ],
-      backgroundColor: isLockedSharedState 
-        ? '#ef5350' 
-        : '#42a5f5',
+      backgroundColor: isLockedSharedState ? '#bdbdbd' : themeColor,
       opacity: 1,
     };
   });
@@ -314,10 +299,10 @@ export const ControlScreen = () => {
 
   // Definir cores dinâmicas conforme estado de bloqueio/freio
   const isBlocked = isLocked || isEmergency;
-  const headerColors = isBlocked ? ['#bdbdbd', '#f59e0b'] : ['#1976d2', '#2196f3'];
+  const themeColors = SPEED_MODES[speedMode]?.themeColors || ['#1976d2', '#2196f3'];
+  const headerColors = isBlocked ? ['#bdbdbd', '#9e9e9e'] : themeColors;
   const joystickBgColor = isBlocked ? '#f3f4f6' : '#fff';
-  const joystickStickColor = isBlocked ? '#bdbdbd' : '#42a5f5';
-  const mainContentBg = isBlocked ? '#fef3c7' : '#fff';
+  const mainContentBg = isBlocked ? '#f3f4f6' : '#fff';
 
   // Feedback háptico ao travar/destravar scroll
   useEffect(() => {
@@ -346,9 +331,6 @@ export const ControlScreen = () => {
     }
   }, [displayMaxSpeed, isLocked, isEmergency]);
 
-  // --- INTEGRAÇÃO BLUETOOTH: ENVIO DE COMANDOS --- //
-  // (Removido) estado de freio manual – substituído por modo de emergência
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LinearGradient
@@ -360,37 +342,29 @@ export const ControlScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Voltar"
-            accessibilityHint="Retorna para a tela anterior"
-            accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={22} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
-          
+
           <View style={styles.headerTitleContainer}>
-            <Text 
-              style={styles.headerTitle}
-              accessibilityLabel={`Controle ${deviceInfo?.name || mockMode ? mockDeviceName : 'da Cadeira'}`}
-              accessibilityRole="header"
-            >
-              {deviceInfo?.name ? `Cadeira ${deviceInfo.name}` : (mockMode ? mockDeviceName : 'Controle da Cadeira')}
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              Controle da Cadeira
             </Text>
-            <Text style={styles.headerSubtitle} accessibilityLabel={`Modo ${speedMode === 'eco' ? 'Indoor' : speedMode === 'sport' ? 'Outdoor' : 'Manual'} com velocidade máxima de ${displayMaxSpeed} quilômetros por hora`}>
-              {(speedMode === 'eco' ? 'Indoor' : speedMode === 'sport' ? 'Outdoor' : 'Manual')} • {displayMaxSpeed} km/h
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {SPEED_MODES[speedMode]?.label || 'Manual'} • {displayMaxSpeed} km/h
             </Text>
-            {/* Linha de status compacta */}
-            <View style={styles.headerChipsRow}>
-              <View style={styles.headerChip} accessibilityLabel={isLocked ? 'Cadeira travada' : 'Cadeira destravada'}>
-                <Ionicons name={isLocked ? 'lock-closed' : 'lock-open'} size={12} color="#fff" />
-                <Text style={styles.headerChipText}>{isLocked ? 'Travada' : 'Destravada'}</Text>
-              </View>
-              <View style={[styles.headerChip, isEmergency && styles.headerChipWarn]} accessibilityLabel={isEmergency ? 'Emergência ativa' : 'Sem emergência'}>
-                <Ionicons name="alert-circle" size={12} color="#fff" />
-                <Text style={styles.headerChipText}>{isEmergency ? 'Emergência' : 'Seguro'}</Text>
-              </View>
-            </View>
           </View>
-          
-          <View style={styles.headerSpacer} />
+
+          <View style={styles.headerIconsContainer}>
+            {isEmergency && (
+              <Ionicons
+                name="alert-circle"
+                size={24}
+                color="#FFD700" // Amarelo para destaque
+                style={styles.headerIcon}
+              />
+            )}
+          </View>
         </View>
       </LinearGradient>
 
@@ -425,7 +399,7 @@ export const ControlScreen = () => {
                 <Ionicons
                   name={isEmergency ? 'alert' : 'alert-circle'}
                   size={28}
-                  color={isEmergency ? '#fff' : '#b91c1c'}
+                  color={isEmergency ? '#fff' : '#b91c1b'}
                 />
               </Pressable>
               {isEmergency && (
@@ -450,7 +424,7 @@ export const ControlScreen = () => {
                       onGestureEvent={handleGestureEvent}
                       enabled={!isLockedSharedState && !isEmergency}
                     >
-                      <Animated.View style={[styles.joystickStick, stickAnimatedStyle, { backgroundColor: joystickStickColor }]}>
+                      <Animated.View style={[styles.joystickStick, stickAnimatedStyle]}>
                         {isPressingLock && (
                           <Text style={styles.lockStatusText}>
                             {isLocked ? '🔒' : '🔓'}
@@ -480,10 +454,11 @@ export const ControlScreen = () => {
                     key={key}
                     onPress={() => handleSpeedModeChange(key)}
                     disabled={isLocked || isEmergency}
-                    style={[
+                    style={({ pressed }) => [
                       styles.speedModeButton,
-                      speedMode === key && styles.speedModeButtonSelected,
-                      (isLocked || isEmergency) && styles.speedModeButtonDisabled
+                      speedMode === key && [styles.speedModeButtonSelected, { borderColor: themeColors[0], backgroundColor: themeColors[0] + '1A' }],
+                      (isLocked || isEmergency) && styles.speedModeButtonDisabled,
+                      pressed && { backgroundColor: themeColors[0] + '33' }
                     ]}
                   >
                     <View style={styles.speedModeContent}>
@@ -491,7 +466,7 @@ export const ControlScreen = () => {
                       <View style={styles.speedModeTextContainer}>
                         <Text style={[
                           styles.speedModeLabel,
-                          speedMode === key && styles.speedModeLabelSelected
+                          speedMode === key && [styles.speedModeLabelSelected, { color: themeColors[0] }]
                         ]} numberOfLines={1} ellipsizeMode="tail">
                           {mode.label}
                         </Text>
@@ -501,60 +476,13 @@ export const ControlScreen = () => {
                       </View>
                     </View>
                     <View style={styles.speedModeCheckContainer}>
-                      <Ionicons name="checkmark-circle" size={20} color={speedMode === key ? '#10b981' : 'transparent'} />
+                      <Ionicons name="checkmark-circle" size={20} color={speedMode === key ? themeColors[0] : 'transparent'} />
                     </View>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            {/* System Status */}
-            <View style={styles.systemStatusContainer}>
-              <Text style={styles.sectionTitle}>Status do Sistema</Text>
-              <View style={styles.statusCardModern}>
-                <View style={styles.statusGridModern}>
-                  <View style={styles.statusItemModern}>
-                    <Ionicons name={'hardware-chip-outline'} size={28} color="#1976d2" style={styles.statusIconModern} />
-                    <Text style={styles.statusLabelModern}>Conexão</Text>
-                    <Text style={[ 
-                      styles.statusValueModern,
-                      styles.statusValueActiveModern
-                    ]}>
-                      Serial
-                    </Text>
-                  </View>
-                  
-                  
-                  <View style={styles.statusItemModern}>
-                    <Ionicons name={isEmergency ? 'call' : 'call-outline'} size={28} color="#1976d2" style={styles.statusIconModern} />
-                    <Text style={styles.statusLabelModern}>Contato</Text>
-                    <Text style={[styles.statusValueModern, isEmergency ? styles.statusValueWarningModern : styles.statusValueActiveModern]}>
-                      {isEmergency ? 'Acionando…' : 'Pronto'}
-                    </Text>
-                  </View>
-                <View style={styles.statusItemModern}>
-                  <Ionicons name={systemTemperature > 45 ? 'thermometer' : 'thermometer-outline'} size={28} color="#1976d2" style={styles.statusIconModern} />
-                  <Text style={styles.statusLabelModern}>Temperatura do Sistema</Text>
-                  <Text style={[
-                    styles.statusValueModern,
-                    systemTemperature > 45 ? styles.statusValueWarningModern : styles.statusValueActiveModern
-                  ]}>
-                    {`${systemTemperature?.toFixed ? systemTemperature.toFixed(1) : systemTemperature} °C`}
-                  </Text>
-                </View>
-                  <View style={styles.statusItemModern}>
-                    <Ionicons name={'shield-checkmark-outline'} size={28} color="#1976d2" style={styles.statusIconModern} />
-                    <Text style={styles.statusLabelModern}>Segurança</Text>
-                    <Text style={[
-                      styles.statusValueModern,
-                      styles.statusValueActiveModern
-                    ]}>
-                      OK
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
           </View>
       </ScrollView>
 
@@ -645,24 +573,17 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 8,
+    marginLeft: 16,
   },
   headerTitle: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#fff',
-    textAlign: 'center',
-    includeFontPadding: false,
-    letterSpacing: 0.2,
-    textTransform: 'none',
   },
   headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
-    fontWeight: '600',
-    includeFontPadding: false,
   },
   speedModeBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -685,38 +606,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
   },
-  // Espaçador para alinhar o conteúdo centralizado
-  headerSpacer: {
-    width: 44,
-    height: 44,
-  },
-  headerChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-    justifyContent: 'center',
-  },
-  headerChip: {
+  headerIconsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    gap: 16,
   },
-  headerChipWarn: {
-    backgroundColor: 'rgba(239,68,68,0.28)',
-    borderColor: 'rgba(239,68,68,0.42)',
-  },
-  headerChipText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    includeFontPadding: false,
+  headerIcon: {
+    opacity: 0.9,
   },
   mainContentArea: {
     gap: 16,
@@ -822,7 +718,7 @@ const styles = StyleSheet.create({
     borderColor: '#fecaca',
   },
   emergencyCancelText: {
-    color: '#b91c1c',
+    color: '#b91c1b',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -992,76 +888,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     lineHeight: 18,
     includeFontPadding: false,
-  },
-  systemStatusContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  statusCardModern: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 18,
-    padding: 18,
-    marginTop: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 400,
-  },
-  statusGridModern: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusItemModern: {
-    flex: 1,
-    minWidth: 80,
-    alignItems: 'center',
-    marginVertical: 8,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    shadowColor: '#e0e7ef',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-    marginHorizontal: 4,
-  },
-  statusIconModern: {
-    marginBottom: 6,
-  },
-  statusLabelModern: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 2,
-    fontWeight: '500',
-  },
-  statusValueModern: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  statusValueActiveModern: {
-    color: '#10b981',
-  },
-  statusValueInactiveModern: {
-    color: '#ef4444',
-  },
-  statusValueWarningModern: {
-    color: '#f59e0b',
   },
   fabLockScroll: {
     position: 'absolute',

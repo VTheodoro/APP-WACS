@@ -5,9 +5,24 @@ import Constants from 'expo-constants';
 const BluetoothContext = createContext(null);
 
 export const SPEED_MODES = {
-  eco: { label: 'Indoor', icon: '🏠', desc: 'Locais fechados' },
-  sport: { label: 'Outdoor', icon: '🌤️', desc: 'Locais abertos' },
-  manual: { label: 'Manual', icon: '🎚️', desc: 'Ajuste manual' },
+  eco: { 
+    label: 'Indoor', 
+    icon: '', 
+    desc: 'Locais fechados',
+    themeColors: ['#22c55e', '#16a34a'] // Verde
+  },
+  sport: { 
+    label: 'Outdoor', 
+    icon: '', 
+    desc: 'Locais abertos',
+    themeColors: ['#ef4444', '#dc2626'] // Vermelho
+  },
+  manual: { 
+    label: 'Manual', 
+    icon: '', 
+    desc: 'Ajuste manual',
+    themeColors: ['#f59e0b', '#d97706'] // Amarelo
+  },
 };
 
 // Em ambientes onde o módulo nativo não está disponível (Expo Go/web),
