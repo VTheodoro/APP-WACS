@@ -31,10 +31,10 @@ const LoginScreen = () => {
   const isFocused = useIsFocused();
 
   useEffect(() => {
-    console.log('[LoginScreen] user:', user, 'authLoading:', authLoading);
+
     if (user && !authLoading) {
       setNavigating(true);
-      console.log('[LoginScreen] Navegando para MainSelection...');
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainSelection' }],
@@ -55,16 +55,16 @@ const LoginScreen = () => {
       return;
     }
     setIsLoading(true);
-    console.log('[LoginScreen] Iniciando login...');
+
     try {
       await login(email, password);
-      console.log('[LoginScreen] login() resolvido');
+
     } catch (e) {
       setError('Email ou senha inválidos.');
-      console.log('[LoginScreen] Erro no login:', e);
+
     } finally {
       setIsLoading(false);
-      console.log('[LoginScreen] setIsLoading(false) chamado');
+
     }
   };
 

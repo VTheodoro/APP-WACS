@@ -63,16 +63,12 @@ export const AuthProvider = ({ children }) => {
 
   // Monitorar estado de autenticação
   useEffect(() => {
-    console.log('[AuthContext] Iniciando monitoramento do estado de autenticação...');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[AuthContext] onAuthStateChanged disparado:', firebaseUser ? firebaseUser.uid : null);
       if (firebaseUser) {
         let firestoreUser = null;
         try {
-          console.log('[AuthContext] Buscando dados do usuário no Firestore...');
           firestoreUser = await getUserData(firebaseUser.uid);
         } catch (e) {
-          console.log('[AuthContext] Erro ao buscar dados do Firestore:', e);
           firestoreUser = null;
         }
         const formattedUser = {
@@ -94,19 +90,14 @@ export const AuthProvider = ({ children }) => {
           reviewsDone: firestoreUser?.reviewsDone || 0,
           locationsAdded: firestoreUser?.locationsAdded || 0,
         };
-        console.log('[AuthContext] Usuário formatado:', formattedUser);
         setUser(formattedUser);
         saveLastUser(formattedUser);
         setLoading(false);
-        console.log('[AuthContext] setLoading(false) chamado.');
         // Atualizar gamificação em background
-        calculateAndUpdateGamification(firebaseUser.uid)
-          .then(() => console.log('[AuthContext] Gamificação atualizada em background.'))
-          .catch(e => console.log('[AuthContext] Erro ao atualizar gamificação (background):', e));
+        calculateAndUpdateGamification(firebaseUser.uid);
       } else {
         setUser(null);
         setLoading(false);
-        console.log('[AuthContext] setLoading(false) chamado.');
       }
     });
     return () => unsubscribe();
@@ -116,9 +107,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setError(null);
-      console.log('[AuthContext] Iniciando login...');
+
       await signInWithEmailAndPassword(auth, email, password);
-      console.log('[AuthContext] Login bem-sucedido!');
+
       return true;
     } catch (err) {
       console.error('[AuthContext] Erro no login:', err.message);
@@ -353,4 +344,4 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

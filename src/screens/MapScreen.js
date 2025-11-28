@@ -86,22 +86,22 @@ const MapScreen = () => {
     if (nav.routeData) {
       setShowRouteModal(true);
       setLoadingRoute(false); // encerra loading de rota
-      console.log('[MapScreen] Modal de rota aberto via useEffect, routeData:', nav.routeData);
+
     }
   }, [nav.routeData]);
 
   // Função memoizada para traçar rota
   const handleSelectDestination = useCallback(async (destination) => {
-    console.log('[handleSelectDestination] chamada com:', destination, 'location atual:', logic.location);
+
     if (!logic.location || !destination) {
-      console.warn('[handleSelectDestination] location ou destination inválidos', logic.location, destination);
+
       return;
     }
     setLoadingRoute(true);
     await nav.requestRoute(logic.location, destination, GOOGLE_MAPS_API_KEY);
-    console.log('[handleSelectDestination] nav.requestRoute finalizado, routeData:', nav.routeData);
+
     // setShowRouteModal(true); // agora controlado por useEffect
-    console.log('[handleSelectDestination] setShowRouteModal(true) chamado');
+
   }, [logic.location, nav, GOOGLE_MAPS_API_KEY]);
 
   // Função memoizada para centralizar no usuário
@@ -165,7 +165,7 @@ const MapScreen = () => {
   useEffect(() => {
     setShowAccessibleDetails(false);
     setShowDetailsPanel(false);
-    console.log('[MapScreen] selectedLocation mudou:', logic.selectedLocation);
+
   }, [logic.selectedLocation]);
 
   const memoizedOnLongPress = useCallback(handleLongPress, [logic, nav]);
@@ -308,7 +308,7 @@ const MapScreen = () => {
             onToggleFavorite={() => logic.setIsFavorite(fav => !fav)}
             reviews={logic.selectedLocationReviews}
             onStartRoute={() => {
-              console.log('[MapScreen] Traçar rota chamado via painel de detalhes', logic.selectedLocation);
+
               setShowDetailsPanel(false);
               const loc = logic.selectedLocation;
               let lat = loc.latitude, lng = loc.longitude;
@@ -319,7 +319,7 @@ const MapScreen = () => {
               if (typeof lat === 'number' && typeof lng === 'number') {
                 handleSelectDestination({ latitude: lat, longitude: lng });
               } else {
-                console.warn('[MapScreen] Local selecionado sem latitude/longitude válidos', loc);
+
               }
             }}
           />
@@ -330,7 +330,7 @@ const MapScreen = () => {
             onClose={() => logic.setSelectedLocation(null)}
             onShare={() => logic.handleShare(logic.selectedLocation)}
             onRoute={() => {
-              console.log('[MapScreen] Traçar rota chamado via popup', logic.selectedLocation);
+
               setShowDetailsPanel(true);
             }}
             onDetails={() => setShowDetailsPanel(true)}
@@ -349,7 +349,7 @@ const MapScreen = () => {
         visible={showRouteModal && !!nav.routeData}
         onClose={() => {
           setShowRouteModal(false);
-          console.log('[RoutePlannerModal] Fechando modal');
+
         }}
         onStart={handleStartNavigation}
         onShare={logic.handleShareRoute}

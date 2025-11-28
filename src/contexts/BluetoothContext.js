@@ -28,18 +28,45 @@ export const SPEED_MODES = {
 // Em ambientes onde o módulo nativo não está disponível (Expo Go/web),
 // a importação direta pode falhar. Fazemos require dinâmico e fallback.
 const forceMock = Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === true ||
-                  Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === 'true';
+                  Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === 'true' ||
+                  Constants.appOwnership === 'expo';
 
 function createMockBleManager() {
   return {
-    state: async () => 'PoweredOff',
-    onStateChange: (cb) => ({ remove: () => {} }),
-    startDeviceScan: () => {},
+    state: async () => 'PoweredOn',
+    onStateChange: (cb) => {
+      cb('PoweredOn');
+      return { remove: () => {} };
+    },
+    startDeviceScan: (uuids, options, listener) => {
+      // Simular descoberta de dispositivo após um breve delay
+      setTimeout(() => {
+        if (listener) {
+          listener(null, {
+            id: 'wacs-kit-001',
+            name: 'Kit WACS (Simulado)',
+            localName: 'Kit WACS (Simulado)',
+            rssi: -55,
+            mtu: 23,
+            manufacturerData: null,
+            serviceData: null,
+            serviceUUIDs: null,
+            solicitedServiceUUIDs: null,
+            overflowServiceUUIDs: null,
+            txPowerLevel: null,
+            isConnectable: true,
+          });
+        }
+      }, 1000);
+    },
     stopDeviceScan: () => {},
-    connectToDevice: async () => ({
+    connectToDevice: async (id) => ({
+      id,
+      name: 'Kit WACS (Simulado)',
       discoverAllServicesAndCharacteristics: async () => {},
       writeCharacteristicWithResponseForService: async () => {},
       cancelConnection: async () => {},
+      onDisconnected: (cb) => { return { remove: () => {} } },
     }),
     destroy: () => {},
   };
@@ -340,4 +367,4 @@ export const useBluetooth = () => {
     throw new Error('useBluetooth must be used within a BluetoothProvider');
   }
   return context;
-}; 
+};

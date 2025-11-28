@@ -34,27 +34,27 @@ const requestMediaLibraryPermission = async () => {
  */
 export const pickImage = async () => {
   try {
-    console.log('Iniciando seleção de imagem...');
+
     
     // Verificar permissão
     const hasPermission = await requestMediaLibraryPermission();
     if (!hasPermission) {
-      console.log('Permissão para acessar galeria negada');
+
       return null;
     }
     
     // Abrir seletor de imagem
     const result = await ImagePicker.launchImageLibraryAsync(imagePickerOptions);
-    console.log('Resultado do ImagePicker:', result);
+
     
     if (result.canceled || !result.assets || result.assets.length === 0) {
-      console.log('Seleção de imagem cancelada pelo usuário');
+
       return null;
     }
     
     // Obter a primeira imagem selecionada
     const selectedImage = result.assets[0];
-    console.log('Imagem selecionada:', selectedImage.uri);
+
     
     return {
       uri: selectedImage.uri,
@@ -81,7 +81,7 @@ export const saveImageLocally = async (userId, imageAsset) => {
   }
 
   try {
-    console.log('Iniciando salvamento local da imagem...');
+
     
     // Criar diretório se não existir
     const directory = `${FileSystem.documentDirectory}profile_pictures/`;
@@ -96,7 +96,7 @@ export const saveImageLocally = async (userId, imageAsset) => {
       to: filePath
     });
     
-    console.log('Imagem salva com sucesso em:', filePath);
+
     return filePath;
   } catch (error) {
     console.error('Erro ao salvar imagem localmente:', error);
@@ -116,7 +116,7 @@ export const deleteLocalImage = async (userId) => {
   try {
     const filePath = `${FileSystem.documentDirectory}profile_pictures/${userId}_profile_picture.jpg`;
     await FileSystem.deleteAsync(filePath, { idempotent: true });
-    console.log('Imagem local excluída com sucesso');
+
     return true;
   } catch (error) {
     console.error('Erro ao excluir imagem local:', error);

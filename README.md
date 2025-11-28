@@ -1,304 +1,137 @@
-# APP-WACS: Mobilidade, Autonomia e Comunidade
+# ♿ WACS - Wheelchair Accessible Control System
 
-<p align="center">
-  <img src="assets/logo.png" alt="Logo do APP-WACS" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
+**WACS** (Sistema de Controle de Cadeira de Rodas Acessível) é uma aplicação móvel inovadora desenvolvida para transformar a experiência de mobilidade de pessoas com deficiência. O projeto integra controle de hardware (cadeira de rodas motorizada), navegação inteligente focada em acessibilidade, e uma rede social inclusiva.
 
 ---
 
-## 🚀 Visão Geral
+## 🚀 Visão Geral do Projeto
 
-O **APP-WACS** é um aplicativo inovador para pessoas com mobilidade reduzida, cuidadores e familiares. Ele integra controle de cadeiras de rodas motorizadas, navegação acessível, descoberta de locais, gamificação e uma rede social inclusiva — tudo em uma única plataforma, moderna e fácil de usar.
+O WACS não é apenas um controle remoto; é um ecossistema completo de assistência. Ele combina tecnologias modernas (React Native, Firebase, IoT) para oferecer:
 
----
-
-## 🧭 Funcionalidades Principais
-
-- **Controle remoto de cadeiras de rodas via Bluetooth**
-- **Mapa de locais acessíveis com avaliações e filtros inteligentes**
-- **Navegação assistida com rotas acessíveis**
-- **Feed social e chat por cidade/região**
-- **Sistema de gamificação e conquistas**
-- **Gestão de perfil e histórico do usuário**
-- **Assistente virtual para dúvidas e suporte**
-- **Tema claro/escuro dinâmico**
+1.  **Controle Remoto Universal**: Interface para controlar cadeiras de rodas via Bluetooth/Wi-Fi.
+2.  **Navegação Acessível**: Mapas que destacam rotas sem barreiras e locais adaptados.
+3.  **Rede Social Inclusiva**: Conecta usuários para compartilhar experiências e avaliações de locais.
+4.  **Gamificação**: Incentiva a colaboração da comunidade através de pontos e conquistas.
 
 ---
 
-## 📲 Fluxo de Uso e Telas
+## 📱 Funcionalidades Principais
 
-A seguir, conheça cada tela do APP-WACS, seu propósito e como elas se conectam para oferecer uma experiência completa e acessível.
+### 1. Controle & Hardware (`/src/screens/ControlScreen.js`)
+- **Joystick Virtual**: Controle preciso da cadeira com interface sensível ao toque.
+- **Modos de Velocidade**: Eco, Normal e Sport.
+- **Comandos de Voz**: Controle total por voz ("Para frente", "Parar", "Luzes").
+- **Telemetria**: Monitoramento em tempo real de bateria, temperatura e conexão.
 
----
+### 2. Navegação Inteligente (`/src/screens/MapScreen.js`)
+- **Rotas Acessíveis**: Algoritmos que priorizam caminhos com rampas e calçadas adequadas.
+- **Mapeamento Colaborativo**: Usuários podem adicionar e avaliar locais (banheiros adaptados, estacionamento).
+- **Alertas de Obstáculos**: Avisos visuais e sonoros sobre buracos ou barreiras na via.
 
-### 1. Tela Inicial
+### 3. Rede Social & Chat (`/src/screens/social`)
+- **Feed de Comunidade**: Compartilhamento de fotos e histórias.
+- **Chats Regionais**: Salas de bate-papo organizadas por cidade (ex: Vale do Ribeira) para conectar pessoas próximas.
+- **Avaliações Detalhadas**: Sistema de review focado em critérios de acessibilidade.
 
-<p align="center">
-  <img src="Imagens/Tela%20Inicial.jpeg" alt="Tela Inicial" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Ponto de partida do app. Apresenta atalhos para as principais funções: explorar locais, acessar o controle da cadeira, visualizar o feed social, chats e perfil.  
-**Destaques:**  
-- Layout limpo e acessível  
-- Acesso rápido a todas as áreas do app
-
----
-
-### 2. Tela de Login
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Login.jpeg" alt="Tela de Login" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Permite que o usuário acesse sua conta de forma segura, com autenticação via e-mail/senha.  
-**Destaques:**  
-- Feedback visual para erros  
-- Opção de recuperação de senha
+### 4. Gamificação (`/src/features/gamification`)
+- **Sistema de Níveis**: Usuários ganham XP ao contribuir com o mapa ou ajudar outros.
+- **Conquistas**: Medalhas por engajamento (ex: "Explorador", "Guia Local").
 
 ---
 
-### 3. Tela de Conexão Bluetooth
+## 🛠️ Arquitetura Técnica
 
-<p align="center">
-  <img src="Imagens/Tela%20de%20Conexao.png" alt="Tela de Conexão Bluetooth" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
+O projeto segue uma arquitetura moderna e escalável:
 
-**O que faz:**  
-Permite buscar, parear e conectar-se à cadeira de rodas motorizada via Bluetooth.  
-**Destaques:**  
-- Lista de dispositivos próximos  
-- Status de conexão em tempo real
+### Front-end (Mobile)
+- **Framework**: React Native (Expo SDK 52).
+- **Linguagem**: JavaScript (ES6+).
+- **Navegação**: React Navigation (Stack & Tabs).
+- **Mapas**: `react-native-maps` com integração Google Maps API.
+- **Comunicação**: `react-native-ble-plx` (Bluetooth) e `socket.io-client` (Real-time).
 
----
+### Back-end (BaaS)
+- **Plataforma**: Firebase.
+- **Auth**: Autenticação de usuários (Email/Senha).
+- **Firestore**: Banco de dados NoSQL em tempo real.
+- **Storage**: Armazenamento de mídias (fotos de perfil, posts).
 
-### 4. Tela de Controle da Cadeira
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Controle.jpeg" alt="Tela de Controle" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-<p align="center">
-  <img src="Imagens/Tela%20de%20Controle%20em%20modo%20de%20Seguran%C3%A7a.jpeg" alt="Modo de Segurança" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Interface para controlar os movimentos da cadeira, incluindo modo de segurança (freios travados).  
-**Destaques:**  
-- Botões grandes e acessíveis  
-- Feedback visual imediato  
-- Modo de segurança para evitar movimentos acidentais
+### Hardware (IoT)
+- **Microcontrolador**: Arduino / ESP32.
+- **Protocolo**: Comunicação via HTTP (Wi-Fi) ou BLE (Bluetooth Low Energy).
 
 ---
 
-### 5. Tela de Lista de Locais Acessíveis
+## 💾 Estrutura do Banco de Dados (Firestore)
 
-<p align="center">
-  <img src="Imagens/Tela%20da%20Lista%20de%20Locais.jpeg" alt="Lista de Locais" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
+O banco de dados é estruturado em coleções principais para garantir performance e escalabilidade:
 
-**O que faz:**  
-Exibe locais acessíveis próximos, com filtros por tipo e recursos de acessibilidade.  
-**Destaques:**  
-- Cards modernos com fotos, distância e avaliação  
-- Filtros inteligentes e busca com autocomplete  
-- Badge de distância e status visual
+### `users` (Coleção)
+Armazena perfis de usuários.
+- `uid`: Identificador único.
+- `mobilityType`: Tipo de mobilidade (Cadeira motorizada, manual, etc.).
+- `xp`: Pontos de experiência acumulados.
 
----
+### `accessibleLocations` (Coleção)
+Locais mapeados pela comunidade.
+- `location`: GeoPoint (Latitude/Longitude).
+- `features`: Array de tags (ex: `['ramp', 'bathroom']`).
+- `featureRatings`: Média de avaliações por critério.
 
-### 6. Tela de Detalhes do Local
+### `posts` (Coleção)
+Feed da rede social.
+- `imageUrl`: Link da imagem no Firebase Storage.
+- `likes`: Array de UIDs que curtiram.
+- **Sub-coleção `comments`**: Comentários do post.
 
-<p align="center">
-  <img src="Imagens/Tela%20de%20Detalhes%20do%20Local.jpeg" alt="Detalhes do Local" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-<p align="center">
-  <img src="Imagens/Tela%20de%20Delhes%20do%20Ponto%20Acessivel%20no%20Mapa.jpeg" alt="Detalhes do Ponto no Mapa" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Mostra informações completas do local: avaliações, recursos, fotos, autor, data e rota até o destino.  
-**Destaques:**  
-- Avaliações por emoji e estrelas  
-- Ícones de acessibilidade  
-- Botão para traçar rota acessível
+### `chats` (Coleção)
+Salas de bate-papo.
+- `type`: 'regional' ou 'cidade'.
+- `members`: Lista de participantes ativos.
 
 ---
 
-### 7. Tela de Detalhes da Rota
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Detalhes%20da%20Rota.jpeg" alt="Detalhes da Rota" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Exibe o trajeto até o local escolhido, com análise de acessibilidade (rampas, escadas, plano), distância, tempo e elevação.  
-**Destaques:**  
-- Miniatura do trajeto  
-- Instruções detalhadas  
-- Painel de confirmação antes de iniciar navegação
-
----
-
-### 8. Tela de Navegação
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Navega%C3%A7%C3%A3o.jpeg" alt="Tela de Navegação" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Modo de navegação assistida, com instruções passo a passo, ícones de manobra, avisos visuais e controles acessíveis.  
-**Destaques:**  
-- Segmento atual da rota destacado  
-- Feedback visual para obstáculos  
-- Controles grandes para pausar/cancelar
-
----
-
-### 9. Tela de Perfil do Usuário
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Perfil.jpeg" alt="Tela de Perfil" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Permite visualizar e editar informações pessoais, foto, conquistas, XP, nível e contribuições.  
-**Destaques:**  
-- Badge de nível e barra de progresso  
-- Card de contribuições  
-- Edição de dados e foto de perfil
-
----
-
-### 10. Tela de Feed Social (Posts)
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Posts.jpeg" alt="Tela de Posts" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Feed social para compartilhar experiências, dicas e novidades.  
-**Destaques:**  
-- Publicação de posts com texto e imagem  
-- Curtidas, comentários, edição e deleção  
-- Atualização em tempo real
-
----
-
-### 11. Tela de Chat
-
-<p align="center">
-  <img src="Imagens/Tela%20de%20Chat.jpeg" alt="Tela de Chat" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-<p align="center">
-  <img src="Imagens/Tela%20do%20Menu%20de%20Chats.jpeg" alt="Menu de Chats" width="350" style="border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-
-**O que faz:**  
-Chats por cidade e região, com mensagens de texto, imagem, replies, edição e exclusão.  
-**Destaques:**  
-- Barra de escrita moderna  
-- Menu de contexto profissional  
-- Mensagens do sistema (entradas, saídas, avisos)
-
----
-
-## 🏆 Gamificação e Conquistas
-
-- **XP por ações**: Avaliar locais, adicionar locais, contribuir com fotos, etc.
-- **Níveis e badges**: Progresso visual, badges por marcos e engajamento.
-- **Card de contribuições**: Total de avaliações e locais adicionados, com mensagem motivacional.
-
----
-
-## 🌐 Tecnologias Utilizadas
-
-- **React Native + Expo**: Interface moderna e responsiva
-- **Firebase (Firestore, Auth, Storage)**: Backend seguro, escalável e em tempo real
-- **Bluetooth Low Energy (BLE)**: Controle físico da cadeira
-- **@react-navigation**: Navegação fluida
-- **LinearGradient**: Visual premium
-- **Outros**: Veja `package.json` para a lista completa
-
----
-
-## ⚙️ Instalação e Execução
-
-```bash
-git clone https://github.com/VTheodoro/APP-WACS.git
-cd APP-WACS
-yarn install # ou npm install
-# Configure o .env conforme o .env.example
-yarn start # ou npm start
-```
-Abra o app no Expo Go escaneando o QR code.
-
----
-
-## � Instalação automática de módulos nativos do Expo
-
-Este projeto garante automaticamente que os módulos nativos do Expo necessários (por exemplo `expo-file-system` e `expo-asset`) sejam instalados após `npm install` / `yarn install`.
-
-- Implementação: existe um script `postinstall` que executa `node scripts/ensure-expo-native.js`.
-- Esse script verifica se `expo-file-system` e `expo-asset` estão em `node_modules`; se estiverem faltando, ele executa `npx expo install <missing-packages>` usando uma versão compatível com o SDK do Expo definido no projeto.
-
-Como testar / solucionar:
-
-- Depois de clonar o repo, rode `npm install` ou `yarn install` — o `postinstall` será executado automaticamente.
-- Para forçar uma reinstalação limpa e ver o script em ação:
-
-```powershell
-rm -r node_modules package-lock.json yarn.lock; npm install
-```
-
-- Se ocorrer algum erro de rede durante a instalação, execute manualmente (no diretório do projeto):
-
-```powershell
-npx expo install expo-file-system expo-asset
-```
-
-- Se quiser que o processo falhe em CI quando a instalação falhar, podemos alterar o script `scripts/ensure-expo-native.js` para lançar uma exceção (faço isso se desejar).
-
-
----
-
-## �📁 Estrutura do Projeto
+## 📂 Estrutura de Pastas
 
 ```
 src/
-├── components/      # Componentes reutilizáveis
-├── screens/         # Telas principais
-├── services/        # Integrações (Firebase, Bluetooth, etc)
-├── hooks/           # Hooks customizados
-├── context/         # Contextos globais
-├── theme/           # Temas e estilos
-├── utils/           # Funções utilitárias
-└── ...
-assets/              # Imagens, ícones, sons
+├── components/     # Componentes reutilizáveis (Botões, Cards, Inputs)
+├── config/         # Configurações globais (Firebase, API Keys)
+├── contexts/       # React Contexts (Auth, Bluetooth, Navigation)
+├── features/       # Módulos funcionais (Gamificação, Contribuições)
+├── navigation/     # Configuração de rotas (AppNavigator)
+├── screens/        # Telas da aplicação (Control, Map, Social, Profile)
+├── services/       # Integrações externas (Arduino, Firebase API)
+└── utils/          # Funções auxiliares e formatadores
 ```
 
 ---
 
-## ♿️ Foco em Acessibilidade
+## 🚀 Como Executar
 
-- Contraste alto e fontes legíveis
-- Botões grandes e feedback visual
-- Navegação por teclado e suporte a leitores de tela
-- Informações detalhadas sobre acessibilidade dos locais
-
----
-
-## 🤝 Contribua!
-
-1. Faça um fork do repositório
-2. Crie uma branch para sua feature/correção
-3. Envie um Pull Request detalhado
-
----
-
-## 📄 Licença
-
-MIT. Veja o arquivo LICENSE para detalhes.
+1.  **Pré-requisitos**: Node.js, npm/yarn, Expo CLI.
+2.  **Instalação**:
+    ```bash
+    npm install
+    ```
+3.  **Configuração**:
+    - Crie um projeto no Firebase.
+    - Adicione as credenciais em `src/config/firebase.js`.
+    - Adicione sua Google Maps API Key em `app.json` ou `.env`.
+4.  **Execução**:
+    ```bash
+    npx expo start
+    ```
 
 ---
 
-Desenvolvido com 💙 por [vftheodoro](https://github.com/vftheodoro)
+## 🤝 Contribuição
+
+Este é um projeto Open Source focado em impacto social. Contribuições são bem-vindas, especialmente em:
+- Melhorias nos algoritmos de rota acessível.
+- Novas integrações de hardware.
+- Traduções e acessibilidade da interface (i18n, a11y).
+
+---
+
+**Desenvolvido com ❤️ para um mundo mais acessível.**

@@ -101,7 +101,7 @@ const deleteOldProfilePictures = async (userId) => {
     const deletePromises = userPics.map(pic => deleteObject(pic));
     await Promise.all(deletePromises);
     
-    console.log(`${userPics.length} fotos antigas deletadas com sucesso.`);
+
   } catch (error) {
     console.error('Erro ao deletar fotos antigas:', error);
     // Não propagamos o erro para não afetar o upload da nova foto
@@ -139,7 +139,7 @@ export const uploadProfilePicture = async (userId, imageAsset, onProgress = null
   }
 
   try {
-    console.log('Iniciando processo de upload da foto de perfil...');
+
 
     // Validar imagem
     const isValid = await validateImage(imageAsset);
@@ -151,7 +151,7 @@ export const uploadProfilePicture = async (userId, imageAsset, onProgress = null
     await deleteOldProfilePictures(userId);
 
     // Processar imagem (comprimir e redimensionar)
-    console.log('Processando imagem...');
+
     const processedImageUri = await processImage(imageAsset.uri);
     
     // Gerar nome de arquivo com nome do usuário, se disponível
@@ -182,7 +182,7 @@ export const uploadProfilePicture = async (userId, imageAsset, onProgress = null
           async () => {
             // Upload completo, obter URL
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            console.log('Upload concluído com sucesso. URL:', downloadURL);
+
             resolve(downloadURL);
           }
         );
@@ -191,7 +191,7 @@ export const uploadProfilePicture = async (userId, imageAsset, onProgress = null
       // Método simples sem monitoramento de progresso
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
-      console.log('Upload concluído com sucesso. URL:', downloadURL);
+
       return downloadURL;
     }
   } catch (error) {
@@ -213,7 +213,7 @@ export const deleteProfilePicture = async (userId, photoURL) => {
   }
 
   try {
-    console.log('Iniciando deleção da foto de perfil...');
+
 
     // Se temos a URL, podemos extrair a referência direta
     let storageRef;
@@ -229,7 +229,7 @@ export const deleteProfilePicture = async (userId, photoURL) => {
 
     // Deletar o arquivo
     await deleteObject(storageRef);
-    console.log('Foto de perfil deletada com sucesso');
+
 
     return true;
   } catch (error) {
