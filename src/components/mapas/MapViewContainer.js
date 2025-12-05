@@ -126,9 +126,9 @@ export default function MapViewContainer({
       <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 4, borderWidth: 2, borderColor: getSegmentColor(obs.severity), alignItems: 'center' }}>
         <Ionicons name={
           obs.type === 'step' ? 'remove-outline' :
-          obs.type === 'hole' ? 'ellipse-outline' :
-          obs.type === 'ramp' ? 'trending-up-outline' :
-          'alert-circle-outline'
+            obs.type === 'hole' ? 'ellipse-outline' :
+              obs.type === 'ramp' ? 'trending-up-outline' :
+                'alert-circle-outline'
         } size={28} color={getSegmentColor(obs.severity)} />
       </View>
     </Marker>

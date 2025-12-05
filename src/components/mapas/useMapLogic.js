@@ -36,7 +36,12 @@ export default function useMapLogic() {
   const [selectedLocationReviews, setSelectedLocationReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [mapInitialRegion, setMapInitialRegion] = useState(null);
+  const [mapInitialRegion, setMapInitialRegion] = useState({
+    latitude: -24.495277,
+    longitude: -47.846528,
+    latitudeDelta: 0.015,
+    longitudeDelta: 0.015,
+  });
   const [showLoading, setShowLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [didAnimateToLocal, setDidAnimateToLocal] = useState(false);
@@ -141,7 +146,7 @@ export default function useMapLogic() {
       const updatedHistory = [place, ...searchHistory].slice(0, 10);
       setSearchHistory(updatedHistory);
       await AsyncStorage.setItem('mapSearchHistory', JSON.stringify(updatedHistory));
-    } catch (error) {}
+    } catch (error) { }
   };
 
   // Limpar histórico de pesquisa
@@ -149,7 +154,7 @@ export default function useMapLogic() {
     try {
       await AsyncStorage.removeItem('mapSearchHistory');
       setSearchHistory([]);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   // Buscar locais próximos
@@ -179,7 +184,7 @@ export default function useMapLogic() {
         })).sort((a, b) => a.distance - b.distance);
         setNearbyPlaces(places.slice(0, 5));
       }
-    } catch (error) {}
+    } catch (error) { }
     setIsLoadingNearby(false);
   };
 
@@ -195,10 +200,10 @@ export default function useMapLogic() {
         // Fallback: define uma região padrão para não travar loading
         if (!mapInitialRegion) {
           setMapInitialRegion({
-            latitude: -23.55052,
-            longitude: -46.633308,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
+            latitude: -24.495277,
+            longitude: -47.846528,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
           });
           setShowLoading(false);
         }
@@ -206,13 +211,8 @@ export default function useMapLogic() {
       }
       // Watchdog: se em 5s não tivermos região, defina padrão e siga
       watchdog = setTimeout(() => {
-        if (!mapInitialRegion && !location) {
-          setMapInitialRegion({
-            latitude: -23.55052,
-            longitude: -46.633308,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          });
+        if (!location) {
+          // Mantém a região inicial da ETEC se não conseguir localização
           setShowLoading(false);
         }
       }, 5000);
@@ -394,7 +394,7 @@ export default function useMapLogic() {
         const response = await fetch(url);
         const data = await response.json();
         address = data.results?.[0]?.formatted_address || '';
-      } catch {}
+      } catch { }
       setSelectedLocation({
         id: `random_${pendingDestination.latitude}_${pendingDestination.longitude}`,
         latitude: pendingDestination.latitude,
@@ -493,7 +493,7 @@ export default function useMapLogic() {
       //   message: `Confira este local acessível no WACS: ${selectedLocation.name}. Endereço: ${selectedLocation.address}`,
       //   title: `WACS: ${selectedLocation.name}`
       // });
-    } catch (error) {}
+    } catch (error) { }
   };
 
   // Compartilhar rota
@@ -504,7 +504,7 @@ export default function useMapLogic() {
       //   message: `Veja a rota até o destino: https://www.google.com/maps/dir/?api=1&destination=${pendingDestination.latitude},${pendingDestination.longitude}`,
       //   title: 'Rota WACS',
       // });
-    } catch {}
+    } catch { }
   };
 
   // Carregar reviews ao selecionar local
