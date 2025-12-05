@@ -12,9 +12,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { 
-  useAnimatedGestureHandler, 
-  useAnimatedStyle, 
+import Animated, {
+  useAnimatedGestureHandler,
+  useAnimatedStyle,
   useSharedValue,
   withSpring,
   runOnJS,
@@ -59,6 +59,13 @@ export const ControlScreen = () => {
   const speedModeShared = useSharedValue('manual');
   const maxSpeedShared = useSharedValue(10);
 
+  // Derived value para calcular a velocidade em tempo real e atualizar o shared value
+  useDerivedValue(() => {
+    const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
+    const normalizedDistance = distance / MAX_DISTANCE;
+    currentSpeed.value = normalizedDistance * maxSpeedShared.value;
+  });
+
   // Estado de exibição para maxSpeed, sincronizado para mostrar na UI regular
   const [displayMaxSpeed, setDisplayMaxSpeed] = useState(10);
 
@@ -68,13 +75,18 @@ export const ControlScreen = () => {
     runOnJS(setDisplaySpeed)(currentSpeed.value.toFixed(1));
   }, [currentSpeed]);
 
-  // Estados simulados/locais para indicadores (serial-only)
+  // Importar informações do contexto Bluetooth
+  const {
+    batteryLevel,
+    connectionStrength,
+    systemTemperature,
+    deviceInfo: contextDeviceInfo,
+  } = useBluetooth();
+
+  // Estados de conexão (mantidos para compatibilidade com o código existente)
   const isConnected = true;
   const isConnecting = false;
-  const deviceInfo = { name: 'Kit WACS (Simulado)' };
-  const [batteryLevel] = useState(84);
-  const [connectionStrength] = useState('strong');
-  const [estimatedAutonomy] = useState('—');
+  const deviceInfo = contextDeviceInfo || { name: 'Kit WACS (Simulado)' };
 
   const navigation = useNavigation();
   const route = useRoute();
@@ -89,7 +101,7 @@ export const ControlScreen = () => {
       // Previne a ação padrão de voltar apenas se não for uma navegação programática
       if (e.data.action.type !== 'NAVIGATE') {
         e.preventDefault();
-        
+
         // Navega para a tela inicial em vez da tela anterior
         navigation.navigate('MainSelection');
       }
@@ -113,13 +125,6 @@ export const ControlScreen = () => {
     maxSpeedShared.value = speedLimits[speedMode];
     runOnJS(setDisplayMaxSpeed)(speedLimits[speedMode]); // Sincroniza estado regular para exibição
   }, [speedMode, speedModeShared, maxSpeedShared]); // Adicionado shared values como dependência
-
-  // Derived value para calcular a velocidade em tempo real e atualizar o shared value
-  useDerivedValue(() => {
-    const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
-    const normalizedDistance = distance / MAX_DISTANCE;
-    currentSpeed.value = normalizedDistance * maxSpeedShared.value;
-  });
 
   // Derived value para calcular o percentual da velocidade para o gauge
   const speedPercentage = useDerivedValue(() => {
@@ -232,6 +237,24 @@ export const ControlScreen = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Função para calcular autonomia estimada baseada na bateria e modo
+  const calculateEstimatedAutonomy = (batteryPercent, mode) => {
+    if (batteryPercent <= 0) return '0h 0m';
+
+    // Autonomia base em minutos para 100% de bateria
+    const baseAutonomyMinutes = {
+      'eco': 240,    // 4 horas no modo Indoor (mais econômico)
+      'sport': 120,  // 2 horas no modo Outdoor (mais potente)
+      'manual': 180  // 3 horas no modo Manual (médio)
+    };
+
+    const totalMinutes = Math.floor((batteryPercent / 100) * baseAutonomyMinutes[mode]);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    return `${hours}h ${minutes}m`;
+  };
+
   const handleSpeedModeChange = (mode) => {
     // Usar estados regulares do React para lógica UI/vibração
     if (!(isConnected || mockMode) || isLocked || isEmergency) {
@@ -267,9 +290,11 @@ export const ControlScreen = () => {
       'Tem certeza que deseja desconectar a cadeira?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Desconectar', style: 'destructive', onPress: () => { 
-          navigation.navigate('MainSelection'); 
-        } }
+        {
+          text: 'Desconectar', style: 'destructive', onPress: () => {
+            navigation.navigate('MainSelection');
+          }
+        }
       ]
     );
   };
@@ -284,7 +309,7 @@ export const ControlScreen = () => {
           <Animated.View style={[
             styles.speedGaugeFill,
             speedGaugeFillStyle,
-            { 
+            {
               strokeDasharray: circumference,
             }
           ]} />
@@ -369,150 +394,248 @@ export const ControlScreen = () => {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent} scrollEnabled={!scrollLocked}>
-          <View style={styles.mainContentArea}>
-            {/* Removed Arduino server controls (WebSocket UI) - reverted to original behavior */}
-            {/* Fundo dinâmico para área principal */}
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: mainContentBg, zIndex: -1, borderRadius: 20 }} pointerEvents="none" />
-            {/* Joystick Area */}
-            <View style={[styles.joystickArea, { backgroundColor: joystickBgColor }]}>
-              {/* Botão de Emergência */}
-              <Pressable
-                onPress={() => {
-                  if (!isEmergency) {
-                    Alert.alert(
-                      'Ativar Emergência',
-                      'Isso irá travar a cadeira imediatamente e iniciar o contato com o seu contato de emergência. Deseja continuar?',
-                      [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Ativar', style: 'destructive', onPress: () => setIsEmergency(true) }
-                      ]
-                    );
-                  }
-                }}
-                style={[
-                  styles.emergencyButton,
-                  isEmergency && styles.emergencyButtonActive
-                ]}
-                accessibilityLabel={isEmergency ? 'Emergência ativa' : 'Ativar emergência'}
-                accessibilityHint={isEmergency ? 'Contato de emergência em andamento' : 'Trava a cadeira e inicia contato com seu contato de emergência'}
-              >
-                <Ionicons
-                  name={isEmergency ? 'alert' : 'alert-circle'}
-                  size={28}
-                  color={isEmergency ? '#fff' : '#b91c1b'}
-                />
-              </Pressable>
-              {isEmergency && (
-                <View style={{ marginTop: 8, backgroundColor: '#fee2e2', borderRadius: 8, padding: 8, alignItems: 'center' }}>
-                  <Text style={{ color: '#991b1b', fontWeight: 'bold', fontSize: 14 }}>
-                    Modo de emergência ativado
-                  </Text>
-                </View>
-              )}
+        <View style={styles.mainContentArea}>
+          {/* Removed Arduino server controls (WebSocket UI) - reverted to original behavior */}
+          {/* Fundo dinâmico para área principal */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: mainContentBg, zIndex: -1, borderRadius: 20 }} pointerEvents="none" />
+          {/* Joystick Area */}
+          <View style={[styles.joystickArea, { backgroundColor: joystickBgColor }]}>
+            {/* Botão de Emergência */}
+            <Pressable
+              onPress={() => {
+                if (!isEmergency) {
+                  Alert.alert(
+                    'Ativar Emergência',
+                    'Isso irá travar a cadeira imediatamente e iniciar o contato com o seu contato de emergência. Deseja continuar?',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Ativar', style: 'destructive', onPress: () => setIsEmergency(true) }
+                    ]
+                  );
+                }
+              }}
+              style={[
+                styles.emergencyButton,
+                isEmergency && styles.emergencyButtonActive
+              ]}
+              accessibilityLabel={isEmergency ? 'Emergência ativa' : 'Ativar emergência'}
+              accessibilityHint={isEmergency ? 'Contato de emergência em andamento' : 'Trava a cadeira e inicia contato com seu contato de emergência'}
+            >
+              <Ionicons
+                name={isEmergency ? 'alert' : 'alert-circle'}
+                size={28}
+                color={isEmergency ? '#fff' : '#b91c1b'}
+              />
+            </Pressable>
+            {isEmergency && (
+              <View style={{ marginTop: 8, backgroundColor: '#fee2e2', borderRadius: 8, padding: 8, alignItems: 'center' }}>
+                <Text style={{ color: '#991b1b', fontWeight: 'bold', fontSize: 14 }}>
+                  Modo de emergência ativado
+                </Text>
+              </View>
+            )}
 
-              {/* Joystick */}
-              <View style={[styles.joystickContainer, { transform: [{ scale: joystickScale }] }]}>
-                <View style={styles.joystickBase}>
-                  <Pressable
-                    onLongPress={handleLockToggle}
-                    delayLongPress={500}
-                    style={styles.pressableStickArea}
-                    onPressIn={() => setIsPressingLock(true)}
-                    onPressOut={() => setIsPressingLock(false)}
+            {/* Joystick */}
+            <View style={[styles.joystickContainer, { transform: [{ scale: joystickScale }] }]}>
+              <View style={styles.joystickBase}>
+                <Pressable
+                  onLongPress={handleLockToggle}
+                  delayLongPress={500}
+                  style={styles.pressableStickArea}
+                  onPressIn={() => setIsPressingLock(true)}
+                  onPressOut={() => setIsPressingLock(false)}
+                >
+                  <PanGestureHandler
+                    onGestureEvent={handleGestureEvent}
+                    enabled={!isLockedSharedState && !isEmergency}
                   >
-                    <PanGestureHandler 
-                      onGestureEvent={handleGestureEvent}
-                      enabled={!isLockedSharedState && !isEmergency}
-                    >
-                      <Animated.View style={[styles.joystickStick, stickAnimatedStyle]}>
-                        {isPressingLock && (
-                          <Text style={styles.lockStatusText}>
-                            {isLocked ? '🔒' : '🔓'}
-                          </Text>
-                        )}
-                      </Animated.View>
-                    </PanGestureHandler>
-                  </Pressable>
+                    <Animated.View style={[styles.joystickStick, stickAnimatedStyle]}>
+                      {isPressingLock && (
+                        <Text style={styles.lockStatusText}>
+                          {isLocked ? '🔒' : '🔓'}
+                        </Text>
+                      )}
+                    </Animated.View>
+                  </PanGestureHandler>
+                </Pressable>
+              </View>
+              <Text style={styles.joystickInstruction}>
+                Mantenha pressionado para {isLocked ? 'destravar' : 'travar'}
+              </Text>
+            </View>
+
+            {/* Speed Gauge */}
+            {renderSpeedGauge()}
+
+
+          </View>
+
+          {/* Speed Modes */}
+          <View style={styles.speedModesContainer}>
+            <Text style={styles.sectionTitle}>Modos de Velocidade</Text>
+            <View style={styles.speedModesGrid}>
+              {Object.entries(SPEED_MODES).map(([key, mode]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => handleSpeedModeChange(key)}
+                  disabled={isLocked || isEmergency}
+                  style={({ pressed }) => [
+                    styles.speedModeButton,
+                    speedMode === key && [styles.speedModeButtonSelected, { borderColor: themeColors[0], backgroundColor: themeColors[0] + '1A' }],
+                    (isLocked || isEmergency) && styles.speedModeButtonDisabled,
+                    pressed && { backgroundColor: themeColors[0] + '33' }
+                  ]}
+                >
+                  <View style={styles.speedModeContent}>
+                    <Ionicons
+                      name={mode.icon}
+                      size={24}
+                      color={speedMode === key ? themeColors[0] : '#6b7280'}
+                    />
+                    <View style={styles.speedModeTextContainer}>
+                      <Text style={[
+                        styles.speedModeLabel,
+                        speedMode === key && [styles.speedModeLabelSelected, { color: themeColors[0] }]
+                      ]} numberOfLines={1} ellipsizeMode="tail">
+                        {mode.label}
+                      </Text>
+                      <Text style={styles.speedModeDescription} numberOfLines={1} ellipsizeMode="tail">
+                        {mode.desc}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.speedModeCheckContainer}>
+                    <Ionicons name="checkmark-circle" size={20} color={speedMode === key ? themeColors[0] : 'transparent'} />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* System Information */}
+          <View style={styles.systemInfoContainer}>
+            <Text style={styles.sectionTitle}>Informações do Sistema</Text>
+
+            {/* Battery and Autonomy */}
+            <View style={styles.systemInfoGrid}>
+              <View style={styles.systemInfoCard}>
+                <View style={styles.systemInfoHeader}>
+                  <Ionicons name="battery-charging" size={20} color="#22c55e" />
+                  <Text style={styles.systemInfoLabel}>Bateria</Text>
                 </View>
-                <Text style={styles.joystickInstruction}>
-                  Mantenha pressionado para {isLocked ? 'destravar' : 'travar'}
+                <Text style={styles.systemInfoValue}>{Math.round(batteryLevel)}%</Text>
+                <View style={styles.batteryBar}>
+                  <View
+                    style={[
+                      styles.batteryBarFill,
+                      {
+                        width: `${Math.round(batteryLevel)}%`,
+                        backgroundColor: batteryLevel > 50 ? '#22c55e' : batteryLevel > 20 ? '#f59e0b' : '#ef4444'
+                      }
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.systemInfoCard}>
+                <View style={styles.systemInfoHeader}>
+                  <Ionicons name="time-outline" size={20} color="#3b82f6" />
+                  <Text style={styles.systemInfoLabel}>Autonomia</Text>
+                </View>
+                <Text style={styles.systemInfoValue}>
+                  {calculateEstimatedAutonomy(batteryLevel, speedMode)}
+                </Text>
+                <Text style={styles.systemInfoSubtext}>Estimativa restante</Text>
+              </View>
+            </View>
+
+            {/* Temperature and Signal */}
+            <View style={styles.systemInfoGrid}>
+              <View style={styles.systemInfoCard}>
+                <View style={styles.systemInfoHeader}>
+                  <Ionicons name="thermometer-outline" size={20} color="#f59e0b" />
+                  <Text style={styles.systemInfoLabel}>Temperatura</Text>
+                </View>
+                <Text style={styles.systemInfoValue}>
+                  {typeof systemTemperature === 'number' ? systemTemperature.toFixed(1) : '—'}°C
+                </Text>
+                <Text style={styles.systemInfoSubtext}>
+                  {systemTemperature > 45 ? 'Alta' : systemTemperature > 35 ? 'Normal' : 'Baixa'}
                 </Text>
               </View>
 
-              {/* Speed Gauge */}
-              {renderSpeedGauge()}
-
-              
-            </View>
-
-            {/* Speed Modes */}
-            <View style={styles.speedModesContainer}>
-              <Text style={styles.sectionTitle}>Modos de Velocidade</Text>
-              <View style={styles.speedModesGrid}>
-                {Object.entries(SPEED_MODES).map(([key, mode]) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => handleSpeedModeChange(key)}
-                    disabled={isLocked || isEmergency}
-                    style={({ pressed }) => [
-                      styles.speedModeButton,
-                      speedMode === key && [styles.speedModeButtonSelected, { borderColor: themeColors[0], backgroundColor: themeColors[0] + '1A' }],
-                      (isLocked || isEmergency) && styles.speedModeButtonDisabled,
-                      pressed && { backgroundColor: themeColors[0] + '33' }
-                    ]}
-                  >
-                    <View style={styles.speedModeContent}>
-                      <Text style={styles.speedModeIcon}>{mode.icon}</Text>
-                      <View style={styles.speedModeTextContainer}>
-                        <Text style={[
-                          styles.speedModeLabel,
-                          speedMode === key && [styles.speedModeLabelSelected, { color: themeColors[0] }]
-                        ]} numberOfLines={1} ellipsizeMode="tail">
-                          {mode.label}
-                        </Text>
-                        <Text style={styles.speedModeDescription} numberOfLines={1} ellipsizeMode="tail">
-                          {mode.desc}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.speedModeCheckContainer}>
-                      <Ionicons name="checkmark-circle" size={20} color={speedMode === key ? themeColors[0] : 'transparent'} />
-                    </View>
-                  </Pressable>
-                ))}
+              <View style={styles.systemInfoCard}>
+                <View style={styles.systemInfoHeader}>
+                  <Ionicons
+                    name={
+                      connectionStrength === 'strong' ? 'wifi' :
+                        connectionStrength === 'medium' ? 'wifi-outline' :
+                          'wifi-outline'
+                    }
+                    size={20}
+                    color={
+                      connectionStrength === 'strong' ? '#22c55e' :
+                        connectionStrength === 'medium' ? '#f59e0b' :
+                          '#ef4444'
+                    }
+                  />
+                  <Text style={styles.systemInfoLabel}>Sinal</Text>
+                </View>
+                <Text style={styles.systemInfoValue}>
+                  {connectionStrength === 'strong' ? 'Forte' :
+                    connectionStrength === 'medium' ? 'Médio' :
+                      'Fraco'}
+                </Text>
+                <Text style={styles.systemInfoSubtext}>
+                  {isConnected ? 'Conectado' : 'Desconectado'}
+                </Text>
               </View>
             </View>
 
+            {/* Device Info */}
+            {deviceInfo && (
+              <View style={styles.deviceInfoCard}>
+                <View style={styles.deviceInfoHeader}>
+                  <Ionicons name="hardware-chip-outline" size={20} color="#6b7280" />
+                  <Text style={styles.deviceInfoLabel}>Dispositivo Conectado</Text>
+                </View>
+                <Text style={styles.deviceInfoName}>{deviceInfo.name || 'Kit WACS'}</Text>
+              </View>
+            )}
           </View>
-      </ScrollView>
+
+        </View>
+      </ScrollView >
 
       {/* Overlay animado indicando scroll travado */}
-      <Animated.View pointerEvents="none" style={[styles.scrollLockOverlay, scrollLockOverlayStyle]}> 
+      < Animated.View pointerEvents="none" style={[styles.scrollLockOverlay, scrollLockOverlayStyle]} >
         <View style={styles.scrollLockOverlayContent}>
           <Ionicons name="lock-closed" size={38} color="#1976d2" style={{ marginBottom: 8 }} />
           <Text style={styles.scrollLockOverlayText}>Scroll travado</Text>
         </View>
-      </Animated.View>
+      </Animated.View >
 
       {/* Overlay de Emergência */}
-      {isEmergency && (
-        <View style={styles.emergencyOverlay} accessibilityViewIsModal={true}>
-          <View style={styles.emergencyOverlayContent}>
-            <Ionicons name="alert" size={42} color="#ef4444" style={{ marginBottom: 8 }} />
-            <Text style={styles.emergencyTitle}>Modo de Emergência</Text>
-            <Text style={styles.emergencyMessage}>Contactando seu contato de emergência...</Text>
-            <ActivityIndicator size="small" color="#ef4444" style={{ marginVertical: 12 }} />
-            <Pressable
-              style={styles.emergencyCancelButton}
-              onPress={() => setIsEmergency(false)}
-              accessibilityLabel="Cancelar emergência"
-              accessibilityHint="Cancela o modo de emergência e destrava a interface"
-            >
-              <Text style={styles.emergencyCancelText}>Cancelar</Text>
-            </Pressable>
+      {
+        isEmergency && (
+          <View style={styles.emergencyOverlay} accessibilityViewIsModal={true}>
+            <View style={styles.emergencyOverlayContent}>
+              <Ionicons name="alert" size={42} color="#ef4444" style={{ marginBottom: 8 }} />
+              <Text style={styles.emergencyTitle}>Modo de Emergência</Text>
+              <Text style={styles.emergencyMessage}>Contactando seu contato de emergência...</Text>
+              <ActivityIndicator size="small" color="#ef4444" style={{ marginVertical: 12 }} />
+              <Pressable
+                style={styles.emergencyCancelButton}
+                onPress={() => setIsEmergency(false)}
+                accessibilityLabel="Cancelar emergência"
+                accessibilityHint="Cancela o modo de emergência e destrava a interface"
+              >
+                <Text style={styles.emergencyCancelText}>Cancelar</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Botão flutuante para travar/destravar o scroll */}
       <Pressable
@@ -527,7 +650,7 @@ export const ControlScreen = () => {
           color={scrollLocked ? '#fff' : '#1976d2'}
         />
       </Pressable>
-    </GestureHandlerRootView>
+    </GestureHandlerRootView >
   );
 };
 
@@ -937,5 +1060,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     maxWidth: 180,
+  },
+  // System Information Styles
+  systemInfoContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  systemInfoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  systemInfoCard: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  systemInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  systemInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+  },
+  systemInfoValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  systemInfoSubtext: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  batteryBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  batteryBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  deviceInfoCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginTop: 4,
+  },
+  deviceInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  deviceInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+  },
+  deviceInfoName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
   },
 });

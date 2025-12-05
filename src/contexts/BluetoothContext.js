@@ -5,21 +5,21 @@ import Constants from 'expo-constants';
 const BluetoothContext = createContext(null);
 
 export const SPEED_MODES = {
-  eco: { 
-    label: 'Indoor', 
-    icon: '', 
+  eco: {
+    label: 'Indoor',
+    icon: 'home',
     desc: 'Locais fechados',
     themeColors: ['#22c55e', '#16a34a'] // Verde
   },
-  sport: { 
-    label: 'Outdoor', 
-    icon: '', 
+  sport: {
+    label: 'Outdoor',
+    icon: 'leaf',
     desc: 'Locais abertos',
     themeColors: ['#ef4444', '#dc2626'] // Vermelho
   },
-  manual: { 
-    label: 'Manual', 
-    icon: '', 
+  manual: {
+    label: 'Manual',
+    icon: 'settings',
     desc: 'Ajuste manual',
     themeColors: ['#f59e0b', '#d97706'] // Amarelo
   },
@@ -28,15 +28,15 @@ export const SPEED_MODES = {
 // Em ambientes onde o módulo nativo não está disponível (Expo Go/web),
 // a importação direta pode falhar. Fazemos require dinâmico e fallback.
 const forceMock = Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === true ||
-                  Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === 'true' ||
-                  Constants.appOwnership === 'expo';
+  Constants.expoConfig?.extra?.USE_BLUETOOTH_MOCK === 'true' ||
+  Constants.appOwnership === 'expo';
 
 function createMockBleManager() {
   return {
     state: async () => 'PoweredOn',
     onStateChange: (cb) => {
       cb('PoweredOn');
-      return { remove: () => {} };
+      return { remove: () => { } };
     },
     startDeviceScan: (uuids, options, listener) => {
       // Simular descoberta de dispositivo após um breve delay
@@ -59,16 +59,16 @@ function createMockBleManager() {
         }
       }, 1000);
     },
-    stopDeviceScan: () => {},
+    stopDeviceScan: () => { },
     connectToDevice: async (id) => ({
       id,
       name: 'Kit WACS (Simulado)',
-      discoverAllServicesAndCharacteristics: async () => {},
-      writeCharacteristicWithResponseForService: async () => {},
-      cancelConnection: async () => {},
-      onDisconnected: (cb) => { return { remove: () => {} } },
+      discoverAllServicesAndCharacteristics: async () => { },
+      writeCharacteristicWithResponseForService: async () => { },
+      cancelConnection: async () => { },
+      onDisconnected: (cb) => { return { remove: () => { } } },
     }),
-    destroy: () => {},
+    destroy: () => { },
   };
 }
 
@@ -121,17 +121,22 @@ export const BluetoothProvider = ({ children }) => {
     if (mounted) {
       setBatteryLevel(prev => (prev > 0 ? prev : 84));
       setConnectionStrength('strong');
-      setEstimatedAutonomy('3h 10m');
       setSystemTemperature(36.8);
     }
     const interval = setInterval(() => {
-      setBatteryLevel(prev => Math.max(15, Math.min(100, prev + (Math.random() * 2 - 0.8))));
-      setConnectionStrength(prev => (prev === 'strong' ? 'medium' : prev === 'medium' ? 'strong' : 'strong'));
-      setEstimatedAutonomy(() => {
-        const hours = 2 + Math.floor(Math.random() * 2); // 2-3h
-        const minutes = 10 + Math.floor(Math.random() * 40);
-        return `${hours}h ${minutes}m`;
+      // Simula descarga gradual da bateria (diminui lentamente)
+      setBatteryLevel(prev => {
+        // Diminui entre 0.1% e 0.5% a cada 3 segundos
+        const discharge = Math.random() * 0.4 + 0.1;
+        const newLevel = prev - discharge;
+        // Se chegar a 15%, volta para 100% (simula recarga)
+        return newLevel < 15 ? 100 : Math.max(15, Math.min(100, newLevel));
       });
+
+      // Alterna força do sinal
+      setConnectionStrength(prev => (prev === 'strong' ? 'medium' : prev === 'medium' ? 'strong' : 'strong'));
+
+      // Simula variação de temperatura
       setSystemTemperature(prev => {
         const drift = (Math.random() * 0.6) - 0.3; // -0.3 a +0.3
         const next = Math.max(32.5, Math.min(48.0, prev + drift));
@@ -287,7 +292,7 @@ export const BluetoothProvider = ({ children }) => {
     if (bleConnectedDevice) {
       try {
         await bleConnectedDevice.cancelConnection();
-      } catch {}
+      } catch { }
     }
     setIsConnected(false);
     setDeviceInfo(null);

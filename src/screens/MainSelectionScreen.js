@@ -44,7 +44,15 @@ export const MainSelectionScreen = () => {
   const [gamification, setGamification] = useState({ xp: 0, level: 1, badges: [] });
   const [hasNewPosts, setHasNewPosts] = useState(false);
   const [connectBlinkAnim] = useState(new Animated.Value(1));
+  const [showAllNews, setShowAllNews] = useState(false);
   const levelInfo = useMemo(() => getLevelNameAndReward(gamification.level || 1), [gamification.level]);
+
+  // Função para limitar o nome do usuário a 2 palavras
+  const getShortName = (fullName) => {
+    if (!fullName) return 'Usuário';
+    const words = fullName.trim().split(' ');
+    return words.slice(0, 2).join(' ');
+  };
 
   const triggerConnectBlink = useCallback(() => {
     // Pisca o botão de conectar algumas vezes
@@ -110,13 +118,13 @@ export const MainSelectionScreen = () => {
       const ids = posts.map(p => p.id);
       await saveSeenPosts(user.id, ids);
       setHasNewPosts(false);
-    } catch {}
+    } catch { }
   }, [navigation, user?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
-      user?.id ? getUserGamificationData(user.id).then(d => d && setGamification(d)).catch(() => {}) : Promise.resolve(),
+      user?.id ? getUserGamificationData(user.id).then(d => d && setGamification(d)).catch(() => { }) : Promise.resolve(),
       checkNewPosts(),
     ]);
     setRefreshing(false);
@@ -219,7 +227,7 @@ export const MainSelectionScreen = () => {
           ...deviceInfo,
           lastConnected: deviceInfo.lastConnected ? deviceInfo.lastConnected.toISOString() : null
         } : null;
-        
+
         navigation.navigate('ControlScreen', { deviceInfo: serializedDeviceInfo });
       },
       disabled: !isConnected,
@@ -249,23 +257,35 @@ export const MainSelectionScreen = () => {
   ], [navigation, handleCommunityPress, deviceInfo, isConnected]);
 
   const newsItems = useMemo(() => [
-    { 
-      id: '1', 
-      text: 'Nova atualização disponível - Melhorias de performance',
-      type: 'update',
-      time: '2h'
-    },
-    { 
-      id: '2', 
-      text: 'Dica: Mantenha a bateria sempre acima de 20%',
+    {
+      id: '1',
+      text: 'Use o modo Indoor em ambientes fechados para maior autonomia',
       type: 'tip',
-      time: '5h'
+      time: 'Agora'
     },
-    { 
-      id: '3', 
-      text: 'Novo modo de condução eco disponível',
+    {
+      id: '2',
+      text: 'Mantenha a bateria acima de 20% para evitar desligamentos',
+      type: 'tip',
+      time: 'Importante'
+    },
+    {
+      id: '3',
+      text: 'Modo Outdoor oferece mais potência para terrenos irregulares',
       type: 'feature',
-      time: '1d'
+      time: 'Dica'
+    },
+    {
+      id: '4',
+      text: 'Pressione e segure o joystick para travar/destravar a cadeira',
+      type: 'tip',
+      time: 'Útil'
+    },
+    {
+      id: '5',
+      text: 'Verifique o sinal de conexão antes de usar em áreas abertas',
+      type: 'tip',
+      time: 'Segurança'
     },
   ], []);
 
@@ -301,10 +321,10 @@ export const MainSelectionScreen = () => {
         colors={action.disabled ? ['#e0e0e0', '#bdbdbd'] : action.gradient}
         style={styles.quickActionGradient}
       >
-        <Ionicons 
-          name={action.icon} 
-          size={28} 
-          color={action.disabled ? '#9e9e9e' : '#fff'} 
+        <Ionicons
+          name={action.icon}
+          size={28}
+          color={action.disabled ? '#9e9e9e' : '#fff'}
         />
         <Text style={[
           styles.quickActionText,
@@ -337,7 +357,7 @@ export const MainSelectionScreen = () => {
         colors={['#1976d2', '#2196f3']}
         style={styles.headerGradient}
       >
-        <Animated.View 
+        <Animated.View
           style={[
             styles.headerContainer,
             {
@@ -384,7 +404,7 @@ export const MainSelectionScreen = () => {
             </Pressable>
             <View style={styles.greetingContainer}>
               <Text style={styles.timeGreeting}>{getTimeGreeting()},</Text>
-              <Text style={styles.userName}>{user?.name || 'Usuário'}!</Text>
+              <Text style={styles.userName}>{getShortName(user?.name)}!</Text>
               <Text style={{ color: '#FFD700', fontWeight: 'bold', fontSize: 15, marginTop: 2 }}>
                 {levelInfo.name} - {gamification.xp} XP
               </Text>
@@ -425,10 +445,10 @@ export const MainSelectionScreen = () => {
           </View>
           {/* Botão Quick Connect (ícone bluetooth) - Agora também usado para desconectar */}
           <Pressable onPress={handleQuickConnect} style={styles.quickConnectButton}>
-            <Ionicons 
-              name={getConnectionIcon()} 
-              size={16} 
-              color={getConnectionColor()} 
+            <Ionicons
+              name={getConnectionIcon()}
+              size={16}
+              color={getConnectionColor()}
             />
             {isConnecting && (
               <Text style={[styles.connectingText, { fontSize: 12 }]}>Conectando...</Text>
@@ -440,32 +460,59 @@ export const MainSelectionScreen = () => {
           <View style={styles.connectedInfo}>
             <View style={styles.infoGrid}>
               <View style={styles.infoItem}>
-                <Ionicons 
-                  name={getBatteryIcon()} 
-                  size={18} 
-                  color={getBatteryColor()} 
+                <Ionicons
+                  name={getBatteryIcon()}
+                  size={18}
+                  color={getBatteryColor()}
                 />
                 <Text style={styles.infoLabel}>Bateria</Text>
                 <Text style={[styles.infoValue, { color: getBatteryColor() }]}>
                   {Math.round(batteryLevel)}%
                 </Text>
               </View>
-              
+
               <View style={styles.infoDivider} />
               <View style={styles.infoItem}>
-                <Ionicons name="rocket-outline" size={22} color="#FF9800" />
+                <Ionicons
+                  name={SPEED_MODES[speedMode]?.icon || 'speedometer-outline'}
+                  size={22}
+                  color={SPEED_MODES[speedMode]?.themeColors[0] || '#1976d2'}
+                />
                 <Text style={styles.infoLabel}>Modo</Text>
                 <Text style={styles.infoValue}>{SPEED_MODES[speedMode]?.label || 'N/A'}</Text>
               </View>
-              
+
               <View style={styles.infoDivider} />
               <View style={styles.infoItem}>
-                <Ionicons name={isLocked ? 'lock-closed-outline' : 'lock-open-outline'} size={22} color={isLocked ? '#ef4444' : '#22c55e'} />
-                <Text style={styles.infoLabel}>Trava</Text>
-                <Text style={[styles.infoValue, { color: isLocked ? '#ef4444' : '#22c55e' }]}>{isLocked ? 'Ativada' : 'Desativada'}</Text>
+                <Ionicons
+                  name={
+                    connectionStrength === 'strong' ? 'wifi' :
+                      connectionStrength === 'medium' ? 'wifi-outline' :
+                        'wifi-outline'
+                  }
+                  size={22}
+                  color={
+                    connectionStrength === 'strong' ? '#22c55e' :
+                      connectionStrength === 'medium' ? '#FF9800' :
+                        '#ef4444'
+                  }
+                />
+                <Text style={styles.infoLabel}>Sinal</Text>
+                <Text style={[
+                  styles.infoValue,
+                  {
+                    color: connectionStrength === 'strong' ? '#22c55e' :
+                      connectionStrength === 'medium' ? '#FF9800' :
+                        '#ef4444'
+                  }
+                ]}>
+                  {connectionStrength === 'strong' ? 'Forte' :
+                    connectionStrength === 'medium' ? 'Médio' :
+                      'Fraco'}
+                </Text>
               </View>
             </View>
-            <Pressable 
+            <Pressable
               style={styles.connectButton}
               onPress={() => navigation.navigate('ConnectionScreen')}
             >
@@ -519,13 +566,13 @@ export const MainSelectionScreen = () => {
           <Ionicons name="newspaper-outline" size={20} color="#333" />
           <Text style={styles.sectionTitle}>Notícias & Dicas</Text>
         </View>
-        
-        {newsItems.map((item) => (
+
+        {(showAllNews ? newsItems : newsItems.slice(0, 2)).map((item) => (
           <View key={item.id} style={styles.newsItem}>
-            <Ionicons 
-              name={getNewsIcon(item.type)} 
-              size={20} 
-              color="#1976d2" 
+            <Ionicons
+              name={getNewsIcon(item.type)}
+              size={20}
+              color="#1976d2"
             />
             <View style={styles.newsContent}>
               <Text style={styles.newsText}>{item.text}</Text>
@@ -533,32 +580,26 @@ export const MainSelectionScreen = () => {
             </View>
           </View>
         ))}
+
+        {/* Botão Ver Mais */}
+        {newsItems.length > 2 && (
+          <Pressable
+            style={styles.seeMoreButton}
+            onPress={() => setShowAllNews(!showAllNews)}
+          >
+            <Text style={styles.seeMoreText}>
+              {showAllNews ? 'Ver menos' : `Ver mais (${newsItems.length - 2})`}
+            </Text>
+            <Ionicons
+              name={showAllNews ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color="#1976d2"
+            />
+          </Pressable>
+        )}
       </View>
 
-      {/* Atividade Recente */}
-      <View style={styles.activityContainer}>
-        <View style={styles.activityHeader}>
-          <Ionicons name="analytics-outline" size={20} color="#333" />
-          <Text style={styles.sectionTitle}>Resumo de Hoje</Text>
-        </View>
-        
-        <View style={styles.activityStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12.5 km</Text>
-            <Text style={styles.statLabel}>Distância</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>2h 15m</Text>
-            <Text style={styles.statLabel}>Tempo Ativo</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>8.2 km/h</Text>
-            <Text style={styles.statLabel}>Vel. Média</Text>
-          </View>
-        </View>
-      </View>
+
     </ScrollView>
   );
 };
@@ -839,6 +880,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 4,
+  },
+  seeMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f7ff',
+    borderWidth: 1,
+    borderColor: '#d0e7ff',
+  },
+  seeMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1976d2',
+    marginRight: 6,
   },
   activityContainer: {
     backgroundColor: '#fff',
