@@ -27,7 +27,6 @@ import { Colors } from '../theme/Colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppHeader from '../components/common/AppHeader';
-import * as Location from 'expo-location';
 
 export default function LocationsListScreen() {
   // State management
@@ -42,8 +41,7 @@ export default function LocationsListScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [typeFilterModalVisible, setTypeFilterModalVisible] = useState(false);
   const [tempTypeFilter, setTempTypeFilter] = useState(placeTypeFilter);
-  const [sortBy, setSortBy] = useState('distance'); // 'distance', 'rating', 'recent'
-  const [userLocation, setUserLocation] = useState(null);
+  const [sortBy, setSortBy] = useState('rating'); // 'rating', 'recent'
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -177,31 +175,14 @@ export default function LocationsListScreen() {
     count: typeCounts[type],
   }));
 
-  // Função para calcular distância
-  function calculateDistance(lat1, lon1, lat2, lon2) {
-    lat1 = Number(lat1);
-    lon1 = Number(lon1);
-    lat2 = Number(lat2);
-    lon2 = Number(lon2);
-    if ([lat1, lon1, lat2, lon2].some(v => isNaN(v))) {
-      return NaN;
-    }
-    const R = 6371; // km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const dist = R * c;
-    return dist;
-  }
 
   // Load locations with enhanced error handling
   const loadLocations = useCallback(async () => {
     if (!refreshing) {
-    setLoading(true);
+      setLoading(true);
     }
     setError(null);
-    
+
     try {
       const data = await fetchLocations();
       setLocations(data);
@@ -214,20 +195,7 @@ export default function LocationsListScreen() {
     }
   }, [refreshing]);
 
-  // Solicitar localização do usuário ao abrir tela ou ao ordenar por distância
-  useEffect(() => {
-    if (sortBy === 'distance' && !userLocation) {
-      (async () => {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          let loc = await Location.getCurrentPositionAsync({});
-          setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-        } else {
-          Alert.alert('Permissão negada', 'Não foi possível obter sua localização.');
-        }
-      })();
-    }
-  }, [sortBy, userLocation]);
+
 
   // Atualize o filtro de exibição e ordenação
   useEffect(() => {
@@ -248,17 +216,9 @@ export default function LocationsListScreen() {
       );
     }
     // Ordenação
-    if (sortBy === 'distance' && userLocation) {
-      filtered.forEach(loc => {
-        if (loc.latitude && loc.longitude) {
-          loc._distance = calculateDistance(userLocation.latitude, userLocation.longitude, loc.latitude, loc.longitude);
-        } else {
-          loc._distance = Infinity;
-        }
-      });
-      filtered.sort((a, b) => (a._distance || Infinity) - (b._distance || Infinity));
-    } else if (sortBy === 'rating') {
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    if (sortBy === 'rating') {
+      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
     } else if (sortBy === 'recent') {
       filtered.sort((a, b) => {
         const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
@@ -267,7 +227,7 @@ export default function LocationsListScreen() {
       });
     }
     setDisplayedLocations(filtered);
-  }, [locations, searchQuery, placeTypeFilter, accessibilityFilters, sortBy, userLocation]);
+  }, [locations, searchQuery, placeTypeFilter, accessibilityFilters, sortBy]);
 
   // Effects
   useEffect(() => {
@@ -313,14 +273,14 @@ export default function LocationsListScreen() {
   // Adicionar função auxiliar para renderizar cada local
   function getLocationCardStyle(viewMode, rating) {
     const borderColor = rating >= 4.5 ? '#4CAF50' : // Verde para excelente
-                       rating >= 3.5 ? '#FF9800' : // Laranja para bom
-                       rating >= 2 ? '#FFC107' : // Amarelo para médio
-                       rating > 0 ? '#F44336' : // Vermelho para ruim
-                       '#9E9E9E'; // Cinza para sem avaliação
+      rating >= 3.5 ? '#FF9800' : // Laranja para bom
+        rating >= 2 ? '#FFC107' : // Amarelo para médio
+          rating > 0 ? '#F44336' : // Vermelho para ruim
+            '#9E9E9E'; // Cinza para sem avaliação
 
     return [
       viewMode === 'grid' ? styles.gridCard : styles.listCard,
-      { 
+      {
         backgroundColor: '#fff',
         borderColor: borderColor,
         borderWidth: 2,
@@ -338,53 +298,6 @@ export default function LocationsListScreen() {
     return '#F44336'; // vermelho
   }
 
-  // Função utilitária para extrair latitude/longitude do campo location ou dos campos separados
-  function getLatLngFromLocationField(item) {
-    // Se já existem os campos latitude/longitude
-    if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
-      return { latitude: item.latitude, longitude: item.longitude };
-    }
-    // Se location é um objeto {latitude, longitude}
-    if (item.location && typeof item.location === 'object' && !Array.isArray(item.location)) {
-      if (typeof item.location.latitude === 'number' && typeof item.location.longitude === 'number') {
-        return { latitude: item.location.latitude, longitude: item.location.longitude };
-      }
-    }
-    // Se location é array [lat, lng] (números ou strings)
-    if (Array.isArray(item.location) && item.location.length === 2) {
-      let lat = item.location[0];
-      let lng = item.location[1];
-      if (typeof lat === 'string') lat = parseLatLngString(lat, true);
-      if (typeof lng === 'string') lng = parseLatLngString(lng, false);
-      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-        return { latitude: lat, longitude: lng };
-      }
-    }
-    // Se location é string tipo "[24.499485° S, 47.848334° W]" ou "24.499485° S, 47.848334° W"
-    if (typeof item.location === 'string') {
-      let str = item.location.replace(/\[|\]/g, '').trim();
-      const parts = str.split(',');
-      if (parts.length === 2) {
-        const lat = parseLatLngString(parts[0], true);
-        const lng = parseLatLngString(parts[1], false);
-        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-          return { latitude: lat, longitude: lng };
-        }
-      }
-    }
-    return null;
-  }
-
-  function parseLatLngString(str, isLat) {
-    if (typeof str !== 'string') return NaN;
-    const match = str.match(/([\d.\-]+)[^\d\-]*([NSLOEW])?/i);
-    if (!match) return NaN;
-    let value = parseFloat(match[1]);
-    if (isNaN(value)) return NaN;
-    if (/S|O|W/i.test(str)) value = -Math.abs(value);
-    else value = Math.abs(value);
-    return value;
-  }
 
   function renderLocation({ item }) {
     const getLocationEmoji = (rating) => {
@@ -397,8 +310,6 @@ export default function LocationsListScreen() {
 
     const { emoji } = getLocationEmoji(item.rating);
 
-    // Extrair latitude/longitude do campo location
-    const latLng = getLatLngFromLocationField(item);
 
     return (
       <TouchableOpacity
@@ -408,38 +319,26 @@ export default function LocationsListScreen() {
       >
         <View style={viewMode === 'grid' ? styles.gridImageContainer : styles.listImageContainer}>
           {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
+            <Image
+              source={{ uri: item.imageUrl }}
               style={[
                 viewMode === 'grid' ? styles.gridImage : styles.listImage,
-                { borderTopLeftRadius: 14, borderTopRightRadius: viewMode === 'grid' ? 14 : 0, borderBottomLeftRadius: viewMode === 'grid' ? 0 : 14 }
+                { borderTopLeftRadius: 22, borderTopRightRadius: viewMode === 'grid' ? 22 : 0, borderBottomLeftRadius: viewMode === 'grid' ? 0 : 22 }
               ]}
-                resizeMode="cover"
-              />
+              resizeMode="cover"
+            />
           ) : (
-            <View style={[styles.placeholderImage, { borderTopLeftRadius: 14, borderTopRightRadius: viewMode === 'grid' ? 14 : 0, borderBottomLeftRadius: viewMode === 'grid' ? 0 : 14 }]}>
+            <View style={[styles.placeholderImage, { borderTopLeftRadius: 22, borderTopRightRadius: viewMode === 'grid' ? 22 : 0, borderBottomLeftRadius: viewMode === 'grid' ? 0 : 22 }]}>
               <Ionicons name="image" size={36} color="#AAA" />
               <Text style={styles.placeholderText}>Sem imagem</Text>
             </View>
           )}
-          
+
           {/* Badge de status apenas com emoji */}
           <View style={styles.emojiRating}>
             <Text style={styles.emojiText}>{emoji}</Text>
           </View>
 
-          {/* Tag de distância usando latLng - canto inferior direito */}
-          {latLng && userLocation && (
-            <View style={styles.distanceBadge}>
-              <Ionicons name="navigate" size={14} color="#fff" style={{ marginRight: 4 }} />
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>
-                {(() => {
-                  const d = calculateDistance(userLocation.latitude, userLocation.longitude, latLng.latitude, latLng.longitude);
-                  return isNaN(d) ? '--' : `${d.toFixed(1)} km`;
-                })()}
-            </Text>
-          </View>
-          )}
         </View>
 
         <View style={styles.cardContent}>
@@ -451,16 +350,16 @@ export default function LocationsListScreen() {
               ) : (
                 <View style={styles.authorPhotoPlaceholder}>
                   <Ionicons name="person" size={14} color="#666" />
-            </View>
+                </View>
               )}
               <Text style={styles.authorName} numberOfLines={1}>
                 {item.author.name || 'Usuário'}
-            </Text>
+              </Text>
               <Text style={styles.postDate}>
                 {item.createdAt ? new Date(item.createdAt.toDate()).toLocaleDateString() : ''}
-                </Text>
-              </View>
-            )}
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.locationName} numberOfLines={2}>{item.name}</Text>
           <Text style={styles.locationAddress} numberOfLines={1}>{item.address}</Text>
@@ -484,15 +383,15 @@ export default function LocationsListScreen() {
                 return (
                   <View key={index} style={styles.accessibilityTag}>
                     {iconWithColor}
-        </View>
+                  </View>
                 );
               })}
               {item.accessibilityFeatures.length > 3 && (
                 <View style={styles.moreTag}>
                   <Text style={styles.moreTagText}>+{item.accessibilityFeatures.length - 3}</Text>
-      </View>
+                </View>
               )}
-    </View>
+            </View>
           )}
 
           {item.placeType && (
@@ -501,7 +400,7 @@ export default function LocationsListScreen() {
               <Text style={{ marginLeft: 6, fontSize: 13, color: '#1976d2', fontWeight: 'bold' }}>
                 {PLACE_TYPE_LABELS[item.placeType] || item.placeType}
               </Text>
-    </View>
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -808,42 +707,42 @@ export default function LocationsListScreen() {
           </View>
         </View>
       </Modal>
-        <FlatList
-          data={displayedLocations}
-          keyExtractor={item => item.id}
-          renderItem={renderLocation}
-          numColumns={viewMode === 'grid' ? 2 : 1}
-          key={viewMode}
-          contentContainerStyle={[
-            styles.listContent,
-            displayedLocations.length === 0 && styles.emptyListContent,
-            { backgroundColor: '#f8fafc' }
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[Colors.primary.dark]}
-              progressBackgroundColor="#fff"
-              tintColor={Colors.primary.dark}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={() => (
-            <View style={[styles.emptyResults, { backgroundColor: '#f8fafc' }]}>
-              <Ionicons name="search" size={60} color="#DDD" />
-              <Text style={[styles.emptyResultsText, { color: '#666' }]}>Nenhum local encontrado com os filtros aplicados</Text>
-            </View>
-          )}
-        />
+      <FlatList
+        data={displayedLocations}
+        keyExtractor={item => item.id}
+        renderItem={renderLocation}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        key={viewMode}
+        contentContainerStyle={[
+          styles.listContent,
+          displayedLocations.length === 0 && styles.emptyListContent,
+          { backgroundColor: '#f8fafc' }
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary.dark]}
+            progressBackgroundColor="#fff"
+            tintColor={Colors.primary.dark}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={() => (
+          <View style={[styles.emptyResults, { backgroundColor: '#f8fafc' }]}>
+            <Ionicons name="search" size={60} color="#DDD" />
+            <Text style={[styles.emptyResultsText, { color: '#666' }]}>Nenhum local encontrado com os filtros aplicados</Text>
+          </View>
+        )}
+      />
       {/* Floating Action Button */}
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: Colors.primary.dark }]}
-          onPress={() => navigation.navigate('SelectLocationMap')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: Colors.primary.dark }]}
+        onPress={() => navigation.navigate('SelectLocationMap')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
